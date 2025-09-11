@@ -2,15 +2,24 @@
 
 set -euo pipefail
 
+# Irá instalar no venv?
+
 source /venv/main/bin/activate
 COMFYUI_DIR=${WORKSPACE}/ComfyUI
 
+  # Alias persistente e imediato
+#echo "alias comfy='/venv/comfycli/bin/comfy'" >> /root/.bashrc
+#alias comfy='/venv/comfycli/bin/comfy'
+#export PATH="/venv/comfycli/bin:$PATH"
+
 # Configurações para comfy-ui
 if [[ -n "${CIVITAI_TOKEN:-}" ]]; then
-  export CIVITAI_API_TOKEN="$CIVITAI_TOKEN"
+  alias CIVITAI_API_TOKEN=CIVITAI_TOKEN
+  export CIVITAI_API_TOKEN=CIVITAI_TOKEN
 fi
 if [[ -n "${HF_TOKEN:-}" ]]; then
-  export HF_API_TOKEN="$HF_TOKEN"
+  alias HF_API_TOKEN=HF_API_TOKEN
+  export HF_API_TOKEN=HF_TOKEN
 fi
 
 # =========================
@@ -158,8 +167,14 @@ function provisioning_start() {
   provisioning_get_pip_packages
 
   # 3) Instala e configura comfy-cli
-  install_comfy_cli
-  configure_comfy_cli
+  install_comfy_cli_isolado
+  configure_comfy_cli_isolado
+
+  # Alias persistente e imediato
+  echo "alias comfy='/venv/comfycli/bin/comfy'" >> /root/.bashrc
+  alias comfy='/venv/comfycli/bin/comfy'
+  export PATH="/venv/comfycli/bin:$PATH"
+
 
   # 4) workflows default (caso não tenham vindo do Drive)
   workflows_dir="${COMFYUI_DIR}/user/default/workflows"
