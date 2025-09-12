@@ -2,15 +2,6 @@
 
 set -euo pipefail
 
-
-
-# =================================================================================================
-# Settings
-# =================================================================================================
-export DOWNLOAD_GDRIVE_MODELS=false
-
-
-
 # Irá instalar no venv?
 
 source /venv/main/bin/activate
@@ -118,30 +109,34 @@ rclone_sync_from_drive() {
 # =======================
 # RCLONE INTEGRAÇÃO (END)
 # =======================
+Wan 2.2 I2V high-noise GGUF: https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf
+
+wan2.2 I@V low-noise GGUF: https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf
+
+Clip loader: https://huggingface.co/chatpig/umt5xxl-encoder-gguf/resolve/main/umt5xxl-encoder-q8_0.gguf
+
+wan vae: https://huggingface.co/ratoenien/wan_2.1_vae/resolve/main/wan_2.1_vae.safetensors
+
+Upscaler model: https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth
+
+
+
+
+
+
+
 
 #lora
 # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors
 # https://civitai.com/api/download/models/1602715?type=Model&format=SafeTensor
 
 # Pacotes adicionais (se quiser usar apt para deps do comfy-cli futuramente)
-APT_PACKAGES=()
+APT_PACKAGES=( )
+
 # Pacotes pip do seu script + comfy-cli
-PIP_PACKAGES=('sageattention' )
+PIP_PACKAGES=( )
 
-UPSCALER_MODELS=(
-'https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth'
-
-)
-
-
-NODES=(
-
- )
-
-
-LORAS_MODELS=(
-
-)
+NODES=( )
 
 WORKFLOWS=(
  # "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
@@ -150,15 +145,13 @@ WORKFLOWS=(
 CLIP_MODELS=(
   #"https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"
  # "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
- "https://huggingface.co/chatpig/umt5xxl-encoder-gguf/resolve/main/umt5xxl-encoder-q8_0.gguf"
 )
 
-# shellcheck disable=SC2054
-UNET_MODELS=(
-"https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf",
-"https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
-)
-VAE_MODELS=("https://huggingface.co/ratoenien/wan_2.1_vae/resolve/main/wan_2.1_vae.safetensors" )
+
+
+
+UNET_MODELS=( )
+VAE_MODELS=( )
 
 # ================
 # COMFY-CLI (BEGIN)
@@ -189,16 +182,7 @@ function provisioning_start() {
 
   # 1) rclone + sync do Drive
   ensure_rclone
-
-
-
-  if DOWNLOAD_GDRIVE_MODELS; then
-      rclone_sync_from_drive
-  else
-      echo "Os modelos do Gdrive não serão baixados"
-  fi
-
-
+  rclone_sync_from_drive
 
   # 2) pacotes, nodes, pip
   provisioning_get_apt_packages
@@ -234,9 +218,6 @@ function provisioning_start() {
   provisioning_get_files "${COMFYUI_DIR}/models/unet" "${UNET_MODELS[@]}"
   provisioning_get_files "${COMFYUI_DIR}/models/vae"  "${VAE_MODELS[@]}"
   provisioning_get_files "${COMFYUI_DIR}/models/clip" "${CLIP_MODELS[@]}"
-  provisioning_get_files "${COMFYUI_DIR}/models/upscale_models" "${UPSCALER_MODELS[@]}"
-  provisioning_get_files "${COMFYUI_DIR}/models/loras" "${LORAS_MODELS[@]}"
-
 
   provisioning_print_end
 }
