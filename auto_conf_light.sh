@@ -17,7 +17,7 @@ export DOWNLOAD_GDRIVE_MODELS=false
 APT_PACKAGES=()
 # Pacotes pip do seu script + comfy-cli
 # shellcheck disable=SC2054
-PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub' )
+PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub', 'aiohttp' )
 
 
 
@@ -53,6 +53,7 @@ LORAS_MODELS=(
 
 UPSCALER_MODELS=(
 'https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth'
+# https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth
 
 )
 
@@ -489,7 +490,7 @@ provisioning_start() {
 
   if (( UPSCALER_MODELS )); then
     echo "Baixando modelos Upscaler"
-    provisioning_get_files "${COMFYUI_DIR}/models/upscaler_models" "${UPSCALER_MODELS[@]}"
+    provisioning_get_files "${COMFYUI_DIR}/models/upscale_models" "${UPSCALER_MODELS[@]}"
   else
     echo "Sem modelos Upscaler definidos"
   fi
