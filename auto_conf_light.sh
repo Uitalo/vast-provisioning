@@ -326,6 +326,8 @@ provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
     pip /bin/pip --no-cache-dir "${PIP_PACKAGES[@]}"
   fi
+
+  pip install sageattention
 }
 
 provisioning_get_nodes() {
