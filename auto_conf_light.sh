@@ -3,6 +3,7 @@
 set -euo pipefail
 
 
+# echo 'export NOME_VARIAVEL="valor_desejado"' >> ~/.bashrc
 
 # =================================================================================================
 # Settings
