@@ -12,7 +12,8 @@ COMFYUI_DIR=${WORKSPACE}/ComfyUI
 # =================================================================================================
 # Settings
 # =================================================================================================
-export DOWNLOAD_GDRIVE_MODELS=false
+export DOWNLOAD_GDRIVE_MODELS=False
+
 
 #lora
 # https://civitai.com/api/download/models/1602715?type=Model&format=SafeTensor
@@ -424,7 +425,15 @@ provisioning_start() {
 
   # 1) rclone + sync do Drive
   ensure_rclone
+  # DOWNLOAD_GDRIVE_MODELS
   rclone_sync_from_drive
+  if [ "$DOWNLOAD_GDRIVE_MODELS" = "true" ]; then
+    echo "sincronizando modelos com Google Drive..."
+    rclone_sync_from_drive
+
+  else
+    echo "Os modelos não serão sincronizados com o Google Drive.."
+  fi
 
   # 2) pacotes, nodes, pip (do ambiente ComfyUI)
   provisioning_get_apt_packages
