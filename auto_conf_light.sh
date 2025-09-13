@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+source /venv/main/bin/activate
+
+# Diretórios base
+COMFYUI_DIR=${WORKSPACE}/ComfyUI
 
 # echo 'export NOME_VARIAVEL="valor_desejado"' >> ~/.bashrc
 
@@ -17,19 +21,27 @@ export DOWNLOAD_GDRIVE_MODELS=false
 APT_PACKAGES=()
 # Pacotes pip do seu script + comfy-cli
 # shellcheck disable=SC2054
-PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub', 'aiohttp' )
+
+PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub', 'aiohttp', 'comfy' )
 
 
 
 NODES=()
 
+CHECKPOINTS_MODELS=()
 
+TEXT_ENCODERS_MODELS=()
+
+APT_PACKAGES=( )
 
 WORKFLOWS=(
- #"https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
+  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
 )
 
-
+CLIP_MODELS=(
+  "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"
+  "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
+)
 
 # shellcheck disable=SC2054
 UNET_MODELS=(
@@ -56,38 +68,6 @@ UPSCALER_MODELS=(
 # https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth
 
 )
-
-
-CHECKPOINTS_MODELS=(
-
-)
-
-
-  # text_encoders, diffusion_models
-
-DIFFUSION_MODELS=(
-
-
-)
-
-
-TEXTENCODERS_MODELS=(
-
-)
-
-
-
-
-#!/bin/bash
-
-
-# Ativa o venv principal (ComfyUI)
-source /venv/main/bin/activate
-
-# Diretórios base
-COMFYUI_DIR=${WORKSPACE}/ComfyUI
-
-
 
 
 
@@ -123,22 +103,29 @@ PROVISION_START_TS=""
 
 notify_start() {
   PROVISION_START_TS="$(date +%s)"
+  # shellcheck disable=SC2155
   local host="$(hostname | tg_escape_html)"
+  # shellcheck disable=SC2155
   local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
 }
 
 notify_end_success() {
+  # shellcheck disable=SC2155
   local end_ts="$(date +%s)"
   local dur="$(( end_ts - PROVISION_START_TS ))"
+  # shellcheck disable=SC2155
   local host="$(hostname | tg_escape_html)"
+  # shellcheck disable=SC2155
   local msg="✅ <b>Provisioning concluído</b>\nHost: <code>${host}</code>\nDuração: <code>${dur}s</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
 }
 
 notify_end_failure() {
   local code="$?"
+  # shellcheck disable=SC2155
   local host="$(hostname | tg_escape_html)"
+  # shellcheck disable=SC2155
   local msg="❌ <b>Provisioning falhou</b>\nHost: <code>${host}</code>\nCódigo: <code>${code}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
   exit "$code"
@@ -239,21 +226,7 @@ rclone_sync_from_drive() {
 # =========================
 
 # Pacotes (apt/pip) do seu ambiente
-APT_PACKAGES=( )
-PIP_PACKAGES=( )
-NODES=( )
 
-WORKFLOWS=(
-  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
-)
-
-CLIP_MODELS=(
-  "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"
-  "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
-)
-
-UNET_MODELS=( )
-VAE_MODELS=( )
 
 # =========================
 # COMFY-CLI ISOLADO (BEGIN)
@@ -351,7 +324,7 @@ provisioning_get_apt_packages() {
 
 provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
-    pip install --no-cache-dir "${PIP_PACKAGES[@]}"
+    pip /bin/pip --no-cache-dir "${PIP_PACKAGES[@]}"
   fi
 }
 
@@ -439,6 +412,9 @@ provisioning_download() {
 provisioning_start() {
   provisioning_print_header
 
+  notify_start
+
+
   # Espelha CIVITAI_TOKEN em CIVITAI_API_TOKEN (para ferramentas que esperam esse nome)
   if [[ -n "${CIVITAI_TOKEN:-}" ]]; then
     export CIVITAI_API_TOKEN="$CIVITAI_TOKEN"
@@ -509,15 +485,19 @@ provisioning_start() {
     echo "Sem modelos Upscaler definidos"
   fi
 
-   if (( TEXTENCODERS_MODELS )); then
+   if (( TEXT_ENCODERS_MODELS )); then
     echo "Baixando modelos Upscaler"
-    provisioning_get_files "${COMFYUI_DIR}/models/text_encoders" "${TEXTENCODERS_MODELS[@]}"
+    provisioning_get_files "${COMFYUI_DIR}/models/text_encoders" "${TEXT_ENCODERS_MODELS[@]}"
   else
     echo "Sem modelos Upscaler definidos"
   fi
 
 
   provisioning_print_end
+
+
+  notify_end_success
+
 }
 
 if [[ ! -f /.noprovisioning ]]; then
