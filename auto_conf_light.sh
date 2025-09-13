@@ -11,7 +11,6 @@ set -euo pipefail
 export DOWNLOAD_GDRIVE_MODELS=false
 
 #lora
-# https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors
 # https://civitai.com/api/download/models/1602715?type=Model&format=SafeTensor
 
 # Pacotes adicionais (se quiser usar apt para deps do comfy-cli futuramente)
@@ -34,7 +33,6 @@ WORKFLOWS=(
 
 # shellcheck disable=SC2054
 UNET_MODELS=(
-"https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf",
 "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
 )
 VAE_MODELS=(
@@ -44,9 +42,12 @@ CLIP_MODELS=(
   #"https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"
  # "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
  "https://huggingface.co/chatpig/umt5xxl-encoder-gguf/resolve/main/umt5xxl-encoder-q8_0.gguf"
+
 )
 
 LORAS_MODELS=(
+"https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors"
+"https://civitai.com/api/download/models/1602715?type=Model&format=SafeTensor"
 
 )
 
