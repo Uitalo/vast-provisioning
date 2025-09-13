@@ -23,7 +23,7 @@ APT_PACKAGES=()
 # Pacotes pip do seu script + comfy-cli
 # shellcheck disable=SC2054
 
-PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub', 'aiohttp', 'comfy' )
+PIP_PACKAGES=('sageattention', 'deepdiff', 'aiohttp','huggingface_hub', 'aiohttp', 'comfy', 'blend_modes' )
 
 
 
