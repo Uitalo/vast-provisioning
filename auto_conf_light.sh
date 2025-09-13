@@ -79,13 +79,75 @@ TEXTENCODERS_MODELS=(
 
 #!/bin/bash
 
-set -euo pipefail
 
 # Ativa o venv principal (ComfyUI)
 source /venv/main/bin/activate
 
 # Diretórios base
 COMFYUI_DIR=${WORKSPACE}/ComfyUI
+
+
+
+
+
+
+# =========================
+# TELEGRAM NOTIFY (BEGIN)
+# =========================
+: "${TELEGRAM_BOT_TOKEN:=}"
+: "${TELEGRAM_CHAT_ID:=}"
+: "${TELEGRAM_PARSE_MODE:=HTML}"  # HTML|MarkdownV2|None
+
+tg_can_notify() {
+  [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]
+}
+
+tg_send() {
+  tg_can_notify || return 0
+  local text="$1"
+  local url="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+  curl -sS -X POST "$url" \
+    -d "chat_id=${TELEGRAM_CHAT_ID}" \
+    -d "text=${text}" \
+    -d "parse_mode=${TELEGRAM_PARSE_MODE}" \
+    -d "disable_web_page_preview=true" >/dev/null || true
+}
+
+tg_escape_html() {
+  # substitui &, <, > para evitar quebrar HTML
+  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+PROVISION_START_TS=""
+
+notify_start() {
+  PROVISION_START_TS="$(date +%s)"
+  local host="$(hostname | tg_escape_html)"
+  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
+  tg_send "$msg"
+}
+
+notify_end_success() {
+  local end_ts="$(date +%s)"
+  local dur="$(( end_ts - PROVISION_START_TS ))"
+  local host="$(hostname | tg_escape_html)"
+  local msg="✅ <b>Provisioning concluído</b>\nHost: <code>${host}</code>\nDuração: <code>${dur}s</code>\nHora: <code>$(date -Iseconds)</code>"
+  tg_send "$msg"
+}
+
+notify_end_failure() {
+  local code="$?"
+  local host="$(hostname | tg_escape_html)"
+  local msg="❌ <b>Provisioning falhou</b>\nHost: <code>${host}</code>\nCódigo: <code>${code}</code>\nHora: <code>$(date -Iseconds)</code>"
+  tg_send "$msg"
+  exit "$code"
+}
+
+# notifica em qualquer erro
+trap notify_end_failure ERR
+# =========================
+# TELEGRAM NOTIFY (END)
+# =========================a
 
 # =========================
 # RCLONE (BEGIN)
@@ -452,7 +514,6 @@ provisioning_start() {
   else
     echo "Sem modelos Upscaler definidos"
   fi
-
 
 
   provisioning_print_end
