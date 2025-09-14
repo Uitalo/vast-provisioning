@@ -60,7 +60,7 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 comfy --workspace=$COMFY_PATH  install --nvidia
 
 comfy set-default "$COMFY_PATH" --yes
-comfy install --yes --no-tracking
+comfy install --nvidia --yes --no-tracking
 
 
 
@@ -69,7 +69,7 @@ comfy install --yes --no-tracking
 #comfy set-default "$COMFY_PATH"
 # ============================================================
 # Inicializa em background
-# ============================================================
+# =============================i===============================
 # Altere --port se quiser outra porta (padrão 8080 abaixo)
 comfy launch --background -- --listen 0.0.0.0 --port 8080
 
