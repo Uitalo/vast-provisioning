@@ -70,22 +70,20 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 # Instalação via comfy-cli
 # ============================================================
 
-# Imagino que não irá pedir confirmaçõesl
-
 # comfy --install-completion
+
 # Instala o ComfyUI e dependências dentro de $COMFY_PATH
 # Define o diretório padrão (sem prompt)
 
+
+
+# Instala o ComfyUI no diretório definido --skip-prompt para não pedir confirmações
 # https://github.com/Comfy-Org/comfy-cli/issues/47
+comfy --skip-prompt install --nvidia
+
 echo "Definindo diretório padrão: $COMFY_PATH"
 comfy set-default $COMFY_PATH
 
-# Instala o ComfyUI no diretório definido, sem telemetria e sem perguntas
-comfy --skip-prompt install --nvidia
-
-
-# Define o diretório padrão, depois de instalado?
-#comfy set-default "$COMFY_PATH"
 # ============================================================
 # Inicializa em background
 # =============================i===============================
