@@ -45,6 +45,7 @@ export PATH="$PATH:/root/.local/bin"
 # ============================================================
 # Diretório padrão do Comfy
 # ============================================================
+echo "Configurando comfy-cli e instalando o ComfyUI..."
 COMFY_PATH="/workspace/ComfyUI"
 mkdir -p "$COMFY_PATH"
 echo "O Comfy será instalado em: $COMFY_PATH"
@@ -52,14 +53,28 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 # ============================================================
 # Instalação via comfy-cli
 # ============================================================
-# Define o diretório padrão
-comfy set-default "$COMFY_PATH"
 
 # Instala o ComfyUI e dependências dentro de $COMFY_PATH
-comfy install
+comfy   --workspace=$COMFY_PATH  install --nvidia
 
+# Define o diretório padrão
+comfy set-default "$COMFY_PATH"
 # ============================================================
 # Inicializa em background
 # ============================================================
 # Altere --port se quiser outra porta (padrão 8080 abaixo)
 comfy launch --background -- --listen 0.0.0.0 --port 8080
+
+  --onstart-cmd bash -lc "curl -fsSL https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/install.sh | bash"
+
+
+tg_send() {
+  tg_can_notify || return 0
+  local text="$1"
+  local url="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+  curl -sS -X POST "$url" \
+    -d "chat_id=${TELEGRAM_CHAT_ID}" \
+    -d "text=${text}" \
+    -d "parse_mode=${TELEGRAM_PARSE_MODE}" \
+    -d "disable_web_page_preview=true" >/dev/null || true
+}
