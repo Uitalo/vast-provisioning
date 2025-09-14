@@ -2,6 +2,22 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
+tg_send() {
+  tg_can_notify || return 0
+  local text="$1"
+  local url="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+  curl -sS -X POST "$url" \
+    -d "chat_id=${TELEGRAM_CHAT_ID}" \
+    -d "text=${text}" \
+    -d "parse_mode=${TELEGRAM_PARSE_MODE}" \
+    -d "disable_web_page_preview=true" >/dev/null || true
+}
+
+tg_can_notify() {
+  [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]
+}
+
+
 # ============================================================
 # Pacotes básicos
 # ============================================================
@@ -54,14 +70,15 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 # Instalação via comfy-cli
 # ============================================================
 
-# Imagino que não irá pedir confirmações
+# Imagino que não irá pedir confirmaçõesl
+
 # comfy --install-completion
 # Instala o ComfyUI e dependências dentro de $COMFY_PATH
 # Define o diretório padrão (sem prompt)
-comfy set-default /workspace/ComfyUI --yes
+comfy set-default /workspace/ComfyUI --non-interactive
 
 # Instala o ComfyUI no diretório definido, sem telemetria e sem perguntas
-comfy install --yes --no-tracking
+comfy install  ---non-interactive
 
 
 
@@ -76,13 +93,3 @@ comfy launch --background -- --listen 0.0.0.0 --port 8080
 
 
 
-tg_send() {
-  tg_can_notify || return 0
-  local text="$1"
-  local url="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
-  curl -sS -X POST "$url" \
-    -d "chat_id=${TELEGRAM_CHAT_ID}" \
-    -d "text=${text}" \
-    -d "parse_mode=${TELEGRAM_PARSE_MODE}" \
-    -d "disable_web_page_preview=true" >/dev/null || true
-}
