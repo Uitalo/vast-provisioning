@@ -55,9 +55,9 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 # ============================================================
 
 # Instala o ComfyUI e dependências dentro de $COMFY_PATH
-comfy   --workspace=$COMFY_PATH  install --nvidia
+comfy  --workspace=$COMFY_PATH  install --nvidia
 
-# Define o diretório padrão
+# Define o diretório padrão, depois de instalado?
 comfy set-default "$COMFY_PATH"
 # ============================================================
 # Inicializa em background
@@ -65,7 +65,6 @@ comfy set-default "$COMFY_PATH"
 # Altere --port se quiser outra porta (padrão 8080 abaixo)
 comfy launch --background -- --listen 0.0.0.0 --port 8080
 
-  --onstart-cmd bash -lc "curl -fsSL https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/install.sh | bash"
 
 
 tg_send() {
