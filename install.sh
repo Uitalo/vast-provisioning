@@ -54,9 +54,11 @@ echo "O Comfy será instalado em: $COMFY_PATH"
 # Instalação via comfy-cli
 # ============================================================
 
+# Imagino que não irá pedir confirmações
+comfy --install-completion
 # Instala o ComfyUI e dependências dentro de $COMFY_PATH
 comfy --workspace=$COMFY_PATH  install --nvidia
-comfy --install-completion
+
 
 
 
