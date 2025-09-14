@@ -63,20 +63,12 @@ export PATH="$PATH:/root/.local/bin"
 # ============================================================
 echo "Configurando comfy-cli e instalando o ComfyUI..."
 export COMFY_PATH="/workspace/ComfyUI"
-mkdir -p "$COMFY_PATH"
+#mkdir -p "$COMFY_PATH"
 echo "O Comfy será instalado em: $COMFY_PATH"
 
 # ============================================================
 # Instalação via comfy-cli
 # ============================================================
-
-# comfy --install-completion
-
-# Instala o ComfyUI e dependências dentro de $COMFY_PATH
-# Define o diretório padrão (sem prompt)
-
-
-
 # Instala o ComfyUI no diretório definido --skip-prompt para não pedir confirmações
 # https://github.com/Comfy-Org/comfy-cli/issues/47
 comfy --workspace=$COMFY_PATH --skip-prompt install --nvidia
