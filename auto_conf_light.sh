@@ -24,7 +24,7 @@ fi
 APT_PACKAGES=()
 
 # Pacotes pip do seu script + comfy-cli (remove duplicatas)
-PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface_hub' 'toml')
+PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml')
 
 # Nodes custom (repositórios git)
 NODES=()
@@ -501,9 +501,9 @@ provisioning_start() {
   else
     echo "Sem Text Encoders definidos"
   fi
-
-  provisioning_print_end
   notify_end_success
+  provisioning_print_end
+
 }
 
 if [[ ! -f /.noprovisioning ]]; then
