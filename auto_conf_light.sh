@@ -446,7 +446,7 @@ provisioning_start() {
   install_comfy_cli_isolado
   configure_comfy_cli_isolado
   "$(comfy_bin)" --version || true
-  "$(comfy_bin)" config show || true
+  #"$(comfy_bin)" config show || true
 
   # 4) workflows default (se não vieram do Drive)
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
