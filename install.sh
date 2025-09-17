@@ -2,6 +2,23 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
+
+
+# =============================================================================================================== #
+# SETTINGS
+# ================================================================================================================ #
+# Variáveis Necessárias:
+# telegram:
+# TELEGRAM_CHAT_ID, TELEGRAM_CHAT_ID
+# Apis para download de modelos:
+# HF_TOKEN, HF_API_TOKEN, CIVITAI_API_TOKEN, CIVITAI_TOKEN
+# Settings
+#  COMFY_PATH,
+
+
+
+
+
 tg_send() {
   tg_can_notify || return 0
   local text="$1"

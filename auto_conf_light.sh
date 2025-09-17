@@ -24,7 +24,7 @@ fi
 APT_PACKAGES=()
 
 # Pacotes pip do seu script + comfy-cli (remove duplicatas)
-PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface_hub')
+PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface_hub' 'toml')
 
 # Nodes custom (repositórios git)
 NODES=()
@@ -32,8 +32,11 @@ NODES=()
 # Listas de modelos (iniciais vazias, algumas serão populadas adiante)
 CHECKPOINTS_MODELS=()
 TEXT_ENCODERS_MODELS=()
+#    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf
+ #    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf
 UNET_MODELS=(
-  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
+  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf",
+  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf"
 )
 VAE_MODELS=(
   "https://huggingface.co/ratoenien/wan_2.1_vae/resolve/main/wan_2.1_vae.safetensors"
@@ -51,7 +54,7 @@ UPSCALER_MODELS=(
 DIFFUSION_MODELS=()  # estava sendo usado sem declarar
 
 WORKFLOWS=(
-  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
+#  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
 )
 
 # ================================================================================================
@@ -86,7 +89,7 @@ notify_start() {
   PROVISION_START_TS="$(date +%s)"
   local host
   host="$(hostname | tg_escape_html)"
-  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
+  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code> <code> MODEL_DOWNLOADS: ${MODESL_DOWNLOAD}</code> "
   tg_send "$msg"
 }
 
@@ -226,11 +229,17 @@ rclone_sync_from_drive() {
 COMFYCLI_VENV=/venv/comfycli
 comfy_bin() { echo "${COMFYCLI_VENV}/bin/comfy"; }
 
+
+# /venv/comfycli/bin/comfy
+
 install_comfy_cli_isolado() {
   echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
   "${COMFYCLI_VENV}/bin/pip" install --upgrade pip
   "${COMFYCLI_VENV}/bin/pip" install --no-cache-dir comfy-cli
+
+  echo "Criando link simbólico do comfy-cli para env do ComfyUI"
+  ln -s "${COMFYCLI_VENV}/bin/comfy" /venv/main/bin
 }
 
 configure_comfy_cli_isolado() {
@@ -263,6 +272,7 @@ configure_comfy_cli_isolado() {
     local CFG_FILE="${CFG_DIR}/cli.toml"
     mkdir -p "$CFG_DIR"
     cat > "$CFG_FILE" <<EOF
+
 # Gerado automaticamente
 workspace_dir = "${COMFYUI_DIR}"
 workflows_dir = "${WORKFLOWS_DIR}"
@@ -310,6 +320,7 @@ provisioning_get_apt_packages() {
 provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
     pip install --no-cache-dir "${PIP_PACKAGES[@]}"
+    /venv/comfycli/bin/pip install --no-cache-dir "${PIP_PACKAGES[@]}"
   fi
 }
 
