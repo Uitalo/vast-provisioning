@@ -86,23 +86,25 @@ tg_escape_html() {
 PROVISION_START_TS=""
 
 notify_start() {
+
+  echo "enviando notificação de inicío de instalação"
   PROVISION_START_TS="$(date +%s)"
   local host
   host="$(hostname | tg_escape_html)"
   local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
+
+
 }
 
-notify_end_success2() {
-  local end_ts dur host
-  end_ts="$(date +%s)"
-  dur="$(( end_ts - PROVISION_START_TS ))"
-  host="$(hostname | tg_escape_html)"
-  local msg="✅ <b>Provisioning concluído</b>\nHost: <code>${host}</code>\nDuração: <code>${dur}s</code>\nHora: <code>$(date -Iseconds)</code>"
-  tg_send "$msg"
-}
+
 
 notify_end_success() {
+   #local end_ts dur host
+  #end_ts="$(date +%s)"
+  #dur="$(( end_ts - PROVISION_START_TS ))"
+  #host="$(hostname | tg_escape_html)"
+
   tg_send "Concluído!"
 }
 
@@ -332,6 +334,7 @@ provisioning_get_pip_packages() {
 }
 
 provisioning_get_nodes() {
+  echo "Obtendo modelos.."
   for repo in "${NODES[@]}"; do
     dir="${repo##*/}"
     path="${COMFYUI_DIR}/custom_nodes/${dir}"
@@ -414,6 +417,7 @@ provisioning_download() {
 }
 
 provisioning_start() {
+  echo "Iniciando instalação"
   provisioning_print_header
   notify_start
 
