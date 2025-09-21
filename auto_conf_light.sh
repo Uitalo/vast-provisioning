@@ -221,7 +221,7 @@ rclone_sync_from_drive() {
     rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${SRC}" "${DST}" ${RCLONE_FLAGS} || true
   done
 
-  local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
+  local WF_LOCAL="${COMFYUI_DIR}/default/workflows"
   mkdir -p "$WF_LOCAL"
   echo "rclone ${RCLONE_COPY_CMD} ${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR} -> ${WF_LOCAL}"
   rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR}" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
@@ -390,7 +390,7 @@ provisioning_get_files() {
   done
 }
 
-provisioning_download() {
+provisioning_download_old() {
   local url="$1"
   local outdir="$2"
   local auth_token=""
@@ -413,6 +413,36 @@ provisioning_download() {
     wget --header="Authorization: Bearer $auth_token" -qnc --trust-server-names --content-disposition --show-progress -e dotbytes="${3:-4M}" -P "$outdir" "$url"
   else
     wget -qnc --trust-server-names --content-disposition --show-progress -e dotbytes="${3:-4M}" -P "$outdir" "$url"
+  fi
+}
+
+provisioning_download() {
+  local url="$1"
+  local outdir="$2"
+  local auth_token=""
+  local filename
+
+  if [[ -n "${HF_TOKEN:-}" && $url =~ ^https://([a-zA-Z0-9_-]+\.)?huggingface\.co(/|$|\?) ]]; then
+    auth_token="$HF_TOKEN"
+  elif [[ -n "${CIVITAI_TOKEN:-}" && $url =~ ^https://([a-zA-Z0-9_-]+\.)?civitai\.com(/|$|\?) ]]; then
+    auth_token="$CIVITAI_TOKEN"
+  fi
+
+  filename="$(basename "${url%%\?*}")"
+  if [[ -f "${outdir}/${filename}" ]]; then
+    echo "Já existe: ${outdir}/${filename} — pulando download."
+    return 0
+  fi
+
+  mkdir -p "$outdir"
+  if [[ -n $auth_token ]]; then
+    wget --header="Authorization: Bearer $auth_token" -nv --no-clobber --trust-server-names --content-disposition \
+         --tries=3 --retry-connrefused --timeout=30 \
+         -P "$outdir" "$url"
+  else
+    wget -nv --no-clobber --trust-server-names --content-disposition \
+         --tries=3 --retry-connrefused --timeout=30 \
+         -P "$outdir" "$url"
   fi
 }
 
