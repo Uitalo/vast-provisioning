@@ -102,6 +102,12 @@ notify_end_success() {
   tg_send "$msg"
 }
 
+notify_end_success() {
+
+  tg_send "Concluído!"
+
+}
+
 notify_end_failure() {
   local code="$?"
   local host
