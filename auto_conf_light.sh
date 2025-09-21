@@ -150,7 +150,7 @@ ensure_tooling() {
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
 : "${RCLONE_COPY_CMD:=copy}"  # use "sync" para espelhar
-: "${RCLONE_FLAGS:=--progress --checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
+: "${RCLONE_FLAGS:=--checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
 
 ensure_rclone() {
   if ! command -v rclone >/dev/null 2>&1; then
