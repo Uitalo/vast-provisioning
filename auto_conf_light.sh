@@ -104,9 +104,7 @@ notify_end_success2() {
 }
 
 notify_end_success() {
-
   tg_send "Concluído!"
-
 }
 
 notify_end_failure() {
