@@ -91,9 +91,10 @@ notify_start() {
   host="$(hostname | tg_escape_html)"
   local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code> <code> MODEL_DOWNLOADS: ${MODESL_DOWNLOAD}</code> "
   tg_send "$msg"
+
 }
 
-notify_end_success() {
+notify_end_success2() {
   local end_ts dur host
   end_ts="$(date +%s)"
   dur="$(( end_ts - PROVISION_START_TS ))"
