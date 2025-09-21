@@ -450,7 +450,7 @@ provisioning_start() {
   # 3) comfy-cli isolado e configuração
   install_comfy_cli_isolado
   configure_comfy_cli_isolado
-  "$(comfy_bin)" --version || true
+  # "$(comfy_bin)" --version || true
   #"$(comfy_bin)" config show || true
 
   # 4) workflows default (se não vieram do Drive)
