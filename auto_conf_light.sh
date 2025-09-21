@@ -35,7 +35,7 @@ TEXT_ENCODERS_MODELS=()
 #    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf
  #    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf
 UNET_MODELS=(
-  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf",
+  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
   "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf"
 )
 VAE_MODELS=(
@@ -89,9 +89,8 @@ notify_start() {
   PROVISION_START_TS="$(date +%s)"
   local host
   host="$(hostname | tg_escape_html)"
-  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code> <code> MODEL_DOWNLOADS: ${MODESL_DOWNLOAD}</code> "
+  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
-
 }
 
 notify_end_success2() {
@@ -244,7 +243,11 @@ install_comfy_cli_isolado() {
   "${COMFYCLI_VENV}/bin/pip" install --no-cache-dir comfy-cli
 
   echo "Criando link simbólico do comfy-cli para env do ComfyUI"
-  ln -s "${COMFYCLI_VENV}/bin/comfy" /venv/main/bin
+  if [[ -d /venv/main/bin ]]; then
+    ln -sf "${COMFYCLI_VENV}/bin/comfy" /venv/main/bin/
+  else
+    echo "Aviso: /venv/main/bin não existe; pulando criação do symlink do comfy-cli."
+  fi
 }
 
 configure_comfy_cli_isolado() {
@@ -325,7 +328,6 @@ provisioning_get_apt_packages() {
 provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
     pip install --no-cache-dir "${PIP_PACKAGES[@]}"
-    /venv/comfycli/bin/pip install --no-cache-dir "${PIP_PACKAGES[@]}"
   fi
 }
 
@@ -452,6 +454,9 @@ provisioning_start() {
   configure_comfy_cli_isolado
   # "$(comfy_bin)" --version || true
   #"$(comfy_bin)" config show || true
+  if [[ ${#PIP_PACKAGES[@]} -gt 0 && -x /venv/comfycli/bin/pip ]]; then
+    /venv/comfycli/bin/pip install --no-cache-dir "${PIP_PACKAGES[@]}"
+  fi
 
   # 4) workflows default (se não vieram do Drive)
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
