@@ -202,17 +202,19 @@ configure_comfy_cli_isolado() {
   "${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
   # Também registra diretórios de modelos (se suportado pela sua versão do CLI)
-  "${COMFY}" set-default --workflows-dir "${WORKFLOWS_DIR}" || true
-  "${COMFY}" set-default --models-dir "${MODELS_DIR}"       || true
-  "${COMFY}" set-default --unet-dir       "${COMFYUI_DIR}/models/unet"        || true
-  "${COMFY}" set-default --vae-dir        "${COMFYUI_DIR}/models/vae"         || true
-  "${COMFY}" set-default --clip-dir       "${COMFYUI_DIR}/models/clip"        || true
-  "${COMFY}" set-default --loras-dir      "${COMFYUI_DIR}/models/loras"       || true
-  "${COMFY}" set-default --controlnet-dir "${COMFYUI_DIR}/models/controlnet"  || true
-  "${COMFY}" set-default --ipadapter-dir  "${COMFYUI_DIR}/models/ipadapter"   || true
-  "${COMFY}" set-default --embeddings-dir "${COMFYUI_DIR}/models/embeddings"  || true
+  #"${COMFY}" set-default --workflows-dir "${WORKFLOWS_DIR}" || true
+  #"${COMFY}" set-default --models-dir "${MODELS_DIR}"       || true
+  #"${COMFY}" set-default --unet-dir       "${COMFYUI_DIR}/models/unet"        || true
+  #"${COMFY}" set-default --vae-dir        "${COMFYUI_DIR}/models/vae"         || true
+  #"${COMFY}" set-default --clip-dir       "${COMFYUI_DIR}/models/clip"        || true
+  #"${COMFY}" set-default --loras-dir      "${COMFYUI_DIR}/models/loras"       || true
+  #"${COMFY}" set-default --controlnet-dir "${COMFYUI_DIR}/models/controlnet"  || true
+  #"${COMFY}" set-default --ipadapter-dir  "${COMFYUI_DIR}/models/ipadapter"   || true
+  #"${COMFY}" set-default --embeddings-dir "${COMFYUI_DIR}/models/embeddings"  || true
   [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
   [[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
+
+
 }
 
 # ================================================================================================
@@ -252,6 +254,7 @@ fallback_install_comfyui_git() {
 }
 
 install_comfyui_replacing_standard() {
+
   echo "==> ComfyUI via comfy-cli (não-interativo)"
   if install_comfyui_via_cli_noninteractive; then
     echo "ComfyUI instalado via comfy-cli."
@@ -372,7 +375,7 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo)
-  install_comfyui_replacing_standard
+  #install_comfyui_replacing_standard
 
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
