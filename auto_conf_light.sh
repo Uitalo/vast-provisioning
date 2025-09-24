@@ -248,47 +248,27 @@ configure_comfy_cli_isolado() {
 
   mkdir -p "$WORKFLOWS_DIR" "$MODELS_DIR"
 
-  if "$COMFY" --help >/dev/null 2>&1 && "$COMFY" set-default --help >/dev/null 2>&1; then
-    set +e
-    "$COMFY" set-default --workspace "${COMFYUI_DIR}" || true
-    "$COMFY" set-default --workflows-dir "${WORKFLOWS_DIR}" || true
-    "$COMFY" set-default --models-dir "${MODELS_DIR}" || true
-    "$COMFY" set-default --unet-dir       "${COMFYUI_DIR}/models/unet" || true
-    "$COMFY" set-default --vae-dir        "${COMFYUI_DIR}/models/vae" || true
-    "$COMFY" set-default --clip-dir       "${COMFYUI_DIR}/models/clip" || true
-    "$COMFY" set-default --loras-dir      "${COMFYUI_DIR}/models/loras" || true
-    "$COMFY" set-default --controlnet-dir "${COMFYUI_DIR}/models/controlnet" || true
-    "$COMFY" set-default --ipadapter-dir  "${COMFYUI_DIR}/models/ipadapter" || true
-    "$COMFY" set-default --embeddings-dir "${COMFYUI_DIR}/models/embeddings" || true
-    [[ -n "${HF_TOKEN:-}" ]] && "$COMFY" set-default --hf-api-token "$HF_TOKEN" || true
-    [[ -n "${CIVITAI_TOKEN:-}" ]] && "$COMFY" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
-    set -e
-  else
-    echo "Subcomando 'set-default' indisponível; usando fallback em ~/.config/comfy/cli.toml"
-    local CFG_DIR="/root/.config/comfy"
-    local CFG_FILE="${CFG_DIR}/cli.toml"
-    mkdir -p "$CFG_DIR"
-    cat > "$CFG_FILE" <<EOF
-# Gerado automaticamente
-workspace_dir = "${COMFYUI_DIR}"
-workflows_dir = "${WORKFLOWS_DIR}"
-models_dir    = "${MODELS_DIR}"
+  # comfy set-default <path>.
+  #COMFY_PATH="/workspace/ComfyUI"
 
-[models]
-unet        = "${COMFYUI_DIR}/models/unet"
-vae         = "${COMFYUI_DIR}/models/vae"
-clip        = "${COMFYUI_DIR}/models/clip"
-loras       = "${COMFYUI_DIR}/models/loras"
-controlnet  = "${COMFYUI_DIR}/models/controlnet"
-ipadapter   = "${COMFYUI_DIR}/models/ipadapter"
-embeddings  = "${COMFYUI_DIR}/models/embeddings"
+  "$COMFY" set-default "/workspace/ComfyUI"
 
-[tokens]
-hf      = "${HF_TOKEN:-}"
-civitai = "${CIVITAI_TOKEN:-}"
-EOF
-    chmod 600 "$CFG_FILE"
-  fi
+
+  # Nodes
+  echo "Atualizando custom nodes"
+
+  cd '/workspace/ComfyUI/custom_nodes' &&  git clone 'https://github.com/city96/ComfyUI-GGUF'
+
+  "$COMFY" node install ComfyUI-Impact-Pack
+
+
+  #   rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR}" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
+
+
+  "$COMFY" comfy node update all
+
+
+
 }
 
 # ================================================================================================
