@@ -15,8 +15,15 @@ fi
 : "${COMFYUI_DIR:=${WORKSPACE}/ComfyUI}"
 
 # ================================================================================================
-# CONFIGURAÇÕES
+# CONFIGURAÇÕES / LOGS ENXUTOS
 # ================================================================================================
+# Verbosidade dos downloads/sync
+: "${RCLONE_FLAGS:=--stats=0 --log-level ERROR --checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
+APT_QUIET_OPTS=(-qq -o=Dpkg::Use-Pty=0)
+PIP_QUIET_OPTS=(-q --progress-bar off --disable-pip-version-check --no-input)
+GIT_QUIET_OPTS=(--quiet)
+
+# (mantido para compat; atualmente não usado)
 : "${DOWNLOAD_GDRIVE_MODELS:=false}"
 
 # Pacotes APT adicionais (se apt existir)
@@ -28,11 +35,9 @@ PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml')
 # Nodes custom (repositórios git)
 NODES=()
 
-# Listas de modelos (iniciais vazias, algumas serão populadas adiante)
+# Listas de modelos
 CHECKPOINTS_MODELS=()
 TEXT_ENCODERS_MODELS=()
-#    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf
- #    - https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf
 UNET_MODELS=(
   "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
   "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_low_noise_14B_Q4_K_M.gguf"
@@ -51,10 +56,7 @@ UPSCALER_MODELS=(
   "https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth"
 )
 DIFFUSION_MODELS=()  # estava sendo usado sem declarar
-
-WORKFLOWS=(
-#  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
-)
+WORKFLOWS=()
 
 # ================================================================================================
 # TELEGRAM NOTIFY
@@ -85,25 +87,15 @@ tg_escape_html() {
 PROVISION_START_TS=""
 
 notify_start() {
-
   echo "enviando notificação de inicío de instalação"
   PROVISION_START_TS="$(date +%s)"
   local host
   host="$(hostname | tg_escape_html)"
   local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
-
-
 }
 
-
-
 notify_end_success() {
-   #local end_ts dur host
-  #end_ts="$(date +%s)"
-  #dur="$(( end_ts - PROVISION_START_TS ))"
-  #host="$(hostname | tg_escape_html)"
-
   tg_send "Concluído!"
 }
 
@@ -123,19 +115,19 @@ trap notify_end_failure ERR
 ensure_tooling() {
   # Garante ferramentas comuns sem depender exclusivamente de apt
   if ! command -v curl >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then apt-get update -y && apt-get install -y curl; fi
+    if command -v apt-get >/dev/null 2>&1; then apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y curl; fi
   fi
   if ! command -v wget >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then apt-get install -y wget; fi
+    if command -v apt-get >/dev/null 2>&1; then apt-get "${APT_QUIET_OPTS[@]}" install -y wget; fi
   fi
   if ! command -v unzip >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then apt-get install -y unzip; fi
+    if command -v apt-get >/dev/null 2>&1; then apt-get "${APT_QUIET_OPTS[@]}" install -y unzip; fi
   fi
   if ! command -v git >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then apt-get install -y git; fi
+    if command -v apt-get >/dev/null 2>&1; then apt-get "${APT_QUIET_OPTS[@]}" install -y git; fi
   fi
   if ! command -v sha256sum >/dev/null 2>&1; then
-    if command -v apt-get >/dev/null 2>&1; then apt-get install -y coreutils; fi
+    if command -v apt-get >/dev/null 2>&1; then apt-get "${APT_QUIET_OPTS[@]}" install -y coreutils; fi
   fi
   command -v sed >/dev/null 2>&1 || true
 }
@@ -149,20 +141,19 @@ ensure_tooling() {
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
 : "${RCLONE_COPY_CMD:=copy}"  # use "sync" para espelhar
-: "${RCLONE_FLAGS:=--checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
 
 ensure_rclone() {
   if ! command -v rclone >/dev/null 2>&1; then
     echo "rclone não encontrado; tentando instalar..."
     if command -v apt-get >/dev/null 2>&1; then
-      apt-get update -y && apt-get install -y rclone || true
+      apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y rclone || true
     fi
   fi
 
   if ! command -v rclone >/dev/null 2>&1; then
     echo "Instalação via apt falhou; baixando binário..."
     curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
-    command -v unzip >/dev/null 2>&1 || (apt-get update -y && apt-get install -y unzip || true)
+    command -v unzip >/dev/null 2>&1 || (apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y unzip || true)
     unzip -q /tmp/rclone.zip -d /tmp
     RCDIR=$(find /tmp -maxdepth 1 -type d -name "rclone-*-linux-amd64" | head -n1)
     install -m 0755 "$RCDIR/rclone" /usr/local/bin/rclone
@@ -215,12 +206,12 @@ rclone_sync_from_drive() {
 
   for SRC in "${!MAPS[@]}"; do
     DST="${MAPS[$SRC]}"
-    mkdir -p "$DST"
+    mkdir -p "$DST"  # garante criação local antes do copy
     echo "rclone ${RCLONE_COPY_CMD} ${RCLONE_REMOTE}:${SRC} -> ${DST}"
     rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${SRC}" "${DST}" ${RCLONE_FLAGS} || true
   done
 
-  local WF_LOCAL="${COMFYUI_DIR}/default/workflows"
+  local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
   mkdir -p "$WF_LOCAL"
   echo "rclone ${RCLONE_COPY_CMD} ${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR} -> ${WF_LOCAL}"
   rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR}" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
@@ -234,14 +225,11 @@ rclone_sync_from_drive() {
 COMFYCLI_VENV=/venv/comfycli
 comfy_bin() { echo "${COMFYCLI_VENV}/bin/comfy"; }
 
-
-# /venv/comfycli/bin/comfy
-
 install_comfy_cli_isolado() {
   echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
-  "${COMFYCLI_VENV}/bin/pip" install --upgrade pip
-  "${COMFYCLI_VENV}/bin/pip" install --no-cache-dir comfy-cli
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
 
   echo "Criando link simbólico do comfy-cli para env do ComfyUI"
   if [[ -d /venv/main/bin ]]; then
@@ -281,7 +269,6 @@ configure_comfy_cli_isolado() {
     local CFG_FILE="${CFG_DIR}/cli.toml"
     mkdir -p "$CFG_DIR"
     cat > "$CFG_FILE" <<EOF
-
 # Gerado automaticamente
 workspace_dir = "${COMFYUI_DIR}"
 workflows_dir = "${WORKFLOWS_DIR}"
@@ -305,77 +292,67 @@ EOF
 }
 
 # ================================================================================================
-# PROVISIONAMENTO
+# INSTALAÇÃO DO COMFYUI (SUBSTITUI PADRÃO)
 # ================================================================================================
-provisioning_print_header() {
-  printf "\n##############################################\n#                                            #\n#          Provisioning container            #\n#                                            #\n#         This will take some time           #\n#                                            #\n# Your container will be ready on completion #\n#                                            #\n##############################################\n\n"
+is_valid_comfy_repo() {
+  [[ -d "${COMFYUI_DIR}/.git" ]] || return 1
+  local url
+  url="$(cd "${COMFYUI_DIR}" && git remote get-url origin 2>/dev/null || true)"
+  [[ "$url" =~ comfyanonymous/ComfyUI ]] || return 1
 }
 
-provisioning_print_end() {
-  printf "\nProvisioning complete:  Application will start now\n\n"
-}
-
-provisioning_get_apt_packages() {
-  if [[ ${#APT_PACKAGES[@]} -gt 0 ]]; then
-    if command -v apt-get >/dev/null 2>&1; then
-      apt-get update -y
-      apt-get install -y "${APT_PACKAGES[@]}"
-    else
-      echo "apt não disponível; pulando APT_PACKAGES."
+prepare_clean_comfy_dir() {
+  # Se existir e for repositório "ruim", remove; se não existir, cria
+  if [[ -d "${COMFYUI_DIR}" ]]; then
+    if ! is_valid_comfy_repo; then
+      echo "Removendo diretório inválido de ComfyUI em ${COMFYUI_DIR}..."
+      rm -rf "${COMFYUI_DIR}"
     fi
+  fi
+  mkdir -p "${COMFYUI_DIR}"
+}
+
+install_comfyui_via_cli() {
+  local COMFY; COMFY="$(comfy_bin)"
+  prepare_clean_comfy_dir
+
+  echo "Instalando ComfyUI com comfy-cli (não-interativo)..."
+  if "$COMFY" install --workspace "${COMFYUI_DIR}" --yes --quiet >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Fallback 1: tentar pipar respostas / forçar yes
+  if command -v yes >/dev/null 2>&1; then
+    echo "Repetindo instalação com respostas automáticas..."
+    { printf 'n\ny\n' | "$COMFY" install --workspace "${COMFYUI_DIR}" >/dev/null 2>&1; } && return 0
+    yes | "$COMFY" install --workspace "${COMFYUI_DIR}" >/dev/null 2>&1 && return 0
+  fi
+
+  return 1
+}
+
+fallback_install_comfyui_git() {
+  echo "Fazendo fallback para instalação padrão (git clone)..."
+  rm -rf "${COMFYUI_DIR}"
+  git clone "${GIT_QUIET_OPTS[@]}" --depth 1 https://github.com/comfyanonymous/ComfyUI "${COMFYUI_DIR}"
+  if [[ -f "${COMFYUI_DIR}/requirements.txt" ]]; then
+    pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir -r "${COMFYUI_DIR}/requirements.txt"
   fi
 }
 
-provisioning_get_pip_packages() {
-  if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
-    pip install --no-cache-dir "${PIP_PACKAGES[@]}"
+install_comfyui_replacing_standard() {
+  echo "==> ComfyUI: instalação substitutiva via comfy-cli"
+  if install_comfyui_via_cli; then
+    echo "ComfyUI instalado via comfy-cli."
+  else
+    echo "comfy-cli falhou ou foi interativo demais; usando fallback git..."
+    fallback_install_comfyui_git
   fi
 }
 
-provisioning_get_nodes() {
-  echo "Obtendo modelos.."
-  for repo in "${NODES[@]}"; do
-    dir="${repo##*/}"
-    path="${COMFYUI_DIR}/custom_nodes/${dir}"
-    requirements="${path}/requirements.txt"
-    if [[ -d $path ]]; then
-      if [[ "${AUTO_UPDATE:-true}" != "false" ]]; then
-        printf "Updating node: %s...\n" "${repo}"
-        ( cd "$path" && git pull )
-        if [[ -e $requirements ]]; then
-           pip install --no-cache-dir -r "$requirements"
-        fi
-      fi
-    else
-      printf "Downloading node: %s...\n" "${repo}"
-      git clone "${repo}" "${path}" --recursive
-      if [[ -e $requirements ]]; then
-        pip install --no-cache-dir -r "${requirements}"
-      fi
-    fi
-  done
-}
-
-provisioning_has_valid_hf_token() {
-  [[ -n "${HF_TOKEN:-}" ]] || return 1
-  local url="https://huggingface.co/api/whoami-v2"
-  local response
-  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
-    -H "Authorization: Bearer $HF_TOKEN" \
-    -H "Content-Type: application/json")
-  [[ "$response" -eq 200 ]]
-}
-
-provisioning_has_valid_civitai_token() {
-  [[ -n "${CIVITAI_TOKEN:-}" ]] || return 1
-  local url="https://civitai.com/api/v1/models?hidden=1&limit=1"
-  local response
-  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
-    -H "Authorization: Bearer $CIVITAI_TOKEN" \
-    -H "Content-Type: application/json")
-  [[ "$response" -eq 200 ]]
-}
-
+# ================================================================================================
+# DOWNLOADS DE MODELOS
+# ================================================================================================
 provisioning_get_files() {
   if [[ -z ${2:-} ]]; then return 1; fi
   local dir="$1"; shift
@@ -388,8 +365,6 @@ provisioning_get_files() {
     printf "\n"
   done
 }
-
-
 
 provisioning_download() {
   local url="$1"
@@ -421,6 +396,81 @@ provisioning_download() {
   fi
 }
 
+# ================================================================================================
+# HELPERS DIVERSOS
+# ================================================================================================
+provisioning_has_valid_hf_token() {
+  [[ -n "${HF_TOKEN:-}" ]] || return 1
+  local url="https://huggingface.co/api/whoami-v2"
+  local response
+  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
+    -H "Authorization: Bearer $HF_TOKEN" \
+    -H "Content-Type: application/json")
+  [[ "$response" -eq 200 ]]
+}
+
+provisioning_has_valid_civitai_token() {
+  [[ -n "${CIVITAI_TOKEN:-}" ]] || return 1
+  local url="https://civitai.com/api/v1/models?hidden=1&limit=1"
+  local response
+  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
+    -H "Authorization: Bearer $CIVITAI_TOKEN" \
+    -H "Content-Type: application/json")
+  [[ "$response" -eq 200 ]]
+}
+
+# ================================================================================================
+# FLUXO PRINCIPAL
+# ================================================================================================
+provisioning_print_header() {
+  printf "\n##############################################\n#                                            #\n#          Provisioning container            #\n#                                            #\n#         This will take some time           #\n#                                            #\n# Your container will be ready on completion #\n#                                            #\n##############################################\n\n"
+}
+
+provisioning_print_end() {
+  printf "\nProvisioning complete:  Application will start now\n\n"
+}
+
+provisioning_get_apt_packages() {
+  if [[ ${#APT_PACKAGES[@]} -gt 0 ]]; then
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get "${APT_QUIET_OPTS[@]}" update -y
+      apt-get "${APT_QUIET_OPTS[@]}" install -y "${APT_PACKAGES[@]}"
+    else
+      echo "apt não disponível; pulando APT_PACKAGES."
+    fi
+  fi
+}
+
+provisioning_get_pip_packages() {
+  if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
+    pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir "${PIP_PACKAGES[@]}"
+  fi
+}
+
+provisioning_get_nodes() {
+  echo "Obtendo modelos.."
+  for repo in "${NODES[@]}"; do
+    dir="${repo##*/}"
+    path="${COMFYUI_DIR}/custom_nodes/${dir}"
+    requirements="${path}/requirements.txt"
+    if [[ -d $path ]]; then
+      if [[ "${AUTO_UPDATE:-true}" != "false" ]]; then
+        printf "Updating node: %s...\n" "${repo}"
+        ( cd "$path" && git pull "${GIT_QUIET_OPTS[@]}" )
+        if [[ -e $requirements ]]; then
+           pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir -r "$requirements"
+        fi
+      fi
+    else
+      printf "Downloading node: %s...\n" "${repo}"
+      git clone "${GIT_QUIET_OPTS[@]}" --depth 1 --filter=blob:none "${repo}" "${path}" --recursive
+      if [[ -e $requirements ]]; then
+        pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir -r "${requirements}"
+      fi
+    fi
+  done
+}
+
 provisioning_start() {
   echo "Iniciando instalação"
   provisioning_print_header
@@ -433,7 +483,7 @@ provisioning_start() {
     export CIVITAI_API_TOKEN="$CIVITAI_TOKEN"
   fi
 
-  # Garante estrutura de pastas principal do ComfyUI
+  # Garante estrutura de pastas principal do ComfyUI (antes da instalação)
   mkdir -p \
     "${COMFYUI_DIR}/models/checkpoints" \
     "${COMFYUI_DIR}/models/unet" \
@@ -449,48 +499,33 @@ provisioning_start() {
     "${COMFYUI_DIR}/user/default/workflows" \
     "${COMFYUI_DIR}/custom_nodes"
 
+  # 1) comfy-cli isolado e configuração
+  install_comfy_cli_isolado
+  configure_comfy_cli_isolado
 
+  # 2) Instala ComfyUI substituindo a instalação padrão
+  install_comfyui_replacing_standard
 
-
-  # 1) rclone + sync do Drive
+  # 3) rclone + sync do Drive (agora a pasta existe corretamente)
   ensure_rclone
-  #rclone_sync_from_drive
+  rclone_sync_from_drive
 
-      # Baixa do Google Drive SOMENTE se habilitado
-  if [[ "${DOWNLOAD_GDRIVE_MODELS,,}" == "true" ]]; then
-    #ensure_rclone
-    rclone_sync_from_drive
-    #restore_snapshot_from_drive
-  else
-    echo "DOWNLOAD_GDRIVE_MODELS != true → pulando download de modelos do Drive."
-  fi
-
-  # 2) pacotes, nodes, pip (do ambiente ComfyUI)
+  # 4) pacotes, nodes, pip (do ambiente ComfyUI)
   provisioning_get_apt_packages
   provisioning_get_nodes
   provisioning_get_pip_packages
 
-  # 3) comfy-cli isolado e configuração
-  install_comfy_cli_isolado
-  configure_comfy_cli_isolado
-  # "$(comfy_bin)" --version || true
-  #"$(comfy_bin)" config show || true
-  if [[ ${#PIP_PACKAGES[@]} -gt 0 && -x /venv/comfycli/bin/pip ]]; then
-    /venv/comfycli/bin/pip install --no-cache-dir "${PIP_PACKAGES[@]}"
-  fi
-
-  # 4) workflows default (se não vieram do Drive)
+  # 5) workflows default (se não vieram do Drive)
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
   provisioning_get_files "${workflows_dir}" "${WORKFLOWS[@]}"
 
-  # 5) escolhe dev/schnell e completa downloads faltantes
+  # 6) escolhe dev/schnell e completa downloads faltantes
   if provisioning_has_valid_hf_token; then
     UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors")
     VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors")
   else
     UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors")
     VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors")
-    # Ajusta workflow exemplo para usar schnell se necessário
     sed -i 's/flux1-dev\.safetensors/flux1-schnell.safetensors/g' "${workflows_dir}/flux_dev_example.json" || true
   fi
 
@@ -532,9 +567,9 @@ provisioning_start() {
   else
     echo "Sem Text Encoders definidos"
   fi
+
   notify_end_success
   provisioning_print_end
-
 }
 
 if [[ ! -f /.noprovisioning ]]; then
