@@ -504,11 +504,11 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) Instala ComfyUI substituindo a instalação padrão
-  install_comfyui_replacing_standard
+ # install_comfyui_replacing_standard
 
   # 3) rclone + sync do Drive (agora a pasta existe corretamente)
   ensure_rclone
-  rclone_sync_from_drive
+  #rclone_sync_from_drive
 
   # 4) pacotes, nodes, pip (do ambiente ComfyUI)
   provisioning_get_apt_packages
