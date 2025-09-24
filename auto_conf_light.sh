@@ -508,7 +508,7 @@ provisioning_start() {
 
   # 3) rclone + sync do Drive (agora a pasta existe corretamente)
   ensure_rclone
-  #rclone_sync_from_drive
+  rclone_sync_from_drive
 
   # 4) pacotes, nodes, pip (do ambiente ComfyUI)
   provisioning_get_apt_packages
