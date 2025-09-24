@@ -17,7 +17,6 @@ fi
 # ================================================================================================
 # CONFIGURAÇÕES
 # ================================================================================================
-# (mantido para compat; atualmente não usado)
 : "${DOWNLOAD_GDRIVE_MODELS:=false}"
 
 # Pacotes APT adicionais (se apt existir)
@@ -474,9 +473,21 @@ provisioning_start() {
     "${COMFYUI_DIR}/user/default/workflows" \
     "${COMFYUI_DIR}/custom_nodes"
 
+
+
+
   # 1) rclone + sync do Drive
   ensure_rclone
-  rclone_sync_from_drive
+  #rclone_sync_from_drive
+
+      # Baixa do Google Drive SOMENTE se habilitado
+  if [[ "${DOWNLOAD_GDRIVE_MODELS,,}" == "true" ]]; then
+    #ensure_rclone
+    rclone_sync_from_drive
+    #restore_snapshot_from_drive
+  else
+    echo "DOWNLOAD_GDRIVE_MODELS != true → pulando download de modelos do Drive."
+  fi
 
   # 2) pacotes, nodes, pip (do ambiente ComfyUI)
   provisioning_get_apt_packages
