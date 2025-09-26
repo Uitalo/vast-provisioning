@@ -99,6 +99,7 @@ ensure_tooling() {
 : "${RCLONE_COPY_CMD:=copy}"  # ou "sync"
 
 ensure_rclone() {
+  echo "Configurando Rclone"
   if ! command -v rclone >/dev/null 2>&1; then
     command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y rclone || true
   fi
@@ -123,12 +124,14 @@ ensure_rclone() {
       chmod 600 /root/.config/rclone/rclone.conf
     else
       echo "Conteúdo inesperado no rclone.conf"
+      tg_send "Falha ao configurar Rclone: Conteúdo inesperado no rclone.conf"
       rm -f /root/.config/rclone/rclone.conf.tmp
       exit 1
     fi
   fi
 
   if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
+    tg_send "Falha ao configurar Rclone:  remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf"
     echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf."
     rclone listremotes || true
     exit 1
