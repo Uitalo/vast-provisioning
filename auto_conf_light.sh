@@ -230,21 +230,7 @@ prepare_clean_comfy_dir() {
   mkdir -p "${COMFYUI_DIR}"
 }
 
-install_comfyui_via_cli_noninteractive() {
-  prepare_clean_comfy_dir
-  # Modo não-interativo: --skip-prompt e telemetria já desativada
-  "${COMFY}" --skip-prompt --workspace "${COMFYUI_DIR}" install
-}
 
-install_comfyui_or_fail() {
-  echo "==> Instalando ComfyUI via comfy-cli (não-interativo)"
-  if install_comfyui_via_cli_noninteractive; then
-    echo "ComfyUI instalado via comfy-cli."
-  else
-    echo "ERRO: comfy-cli falhou ao instalar o ComfyUI. Abortando (sem fallback git)."
-    return 1
-  fi
-}
 
 # ================================================================================================
 # DOWNLOADS DE MODELOS / WORKFLOWS
@@ -357,7 +343,6 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
-  install_comfyui_or_fail
 
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
