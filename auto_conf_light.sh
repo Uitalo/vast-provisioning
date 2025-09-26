@@ -104,44 +104,51 @@ ensure_tooling() {
 
 ensure_rclone() {
   echo "Configurando Rclone"
-  if ! command -v rclone >/dev/null 2>&1; then
-    command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y rclone || true
-  fi
-  if ! command -v rclone >/dev/null 2>&1; then
-    curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
-    command -v unzip >/dev/null 2>&1 || (apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y unzip || true)
-    unzip -q /tmp/rclone.zip -d /tmp
-    RCDIR=$(find /tmp -maxdepth 1 -type d -name "rclone-*-linux-amd64" | head -n1)
-    install -m 0755 "$RCDIR/rclone" /usr/local/bin/rclone
-    rm -rf /tmp/rclone.zip "$RCDIR"
-  fi
 
-  if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
-    mkdir -p /root/.config/rclone
-    curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp
-    if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
-      echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
-        || { echo "Falha na verificação do rclone.conf"; exit 1; }
-    fi
-    if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
-      mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
-      chmod 600 /root/.config/rclone/rclone.conf
+  # 1. Instala se não existir
+  if ! command -v rclone >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get "${APT_QUIET_OPTS[@]}" update -y
+      apt-get "${APT_QUIET_OPTS[@]}" install -y rclone || {
+        echo "ERRO: não foi possível instalar rclone."
+        exit 1               # <== encerra imediatamente
+      }
     else
-      echo "Conteúdo inesperado no rclone.conf"
-      tg_send "Falha ao configurar Rclone: Conteúdo inesperado no rclone.conf"
-      rm -f /root/.config/rclone/rclone.conf.tmp
+      echo "ERRO: rclone não encontrado e não há apt-get para instalar."
       exit 1
     fi
   fi
 
+  # 2. Baixa e valida rclone.conf
+  if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
+    mkdir -p /root/.config/rclone
+    curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp \
+      || { echo "ERRO: não conseguiu baixar rclone.conf"; exit 1; }
+
+    if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
+      echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
+        || { echo "ERRO: checksum do rclone.conf inválido"; exit 1; }
+    fi
+
+    # Verifica formato mínimo
+    if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp \
+       && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
+      mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
+      chmod 600 /root/.config/rclone/rclone.conf
+    else
+      echo "ERRO: rclone.conf com conteúdo inesperado."
+      exit 1
+    fi
+  fi
+
+  # 3. Verifica se o remoto existe
   if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
-    tg_send "Falha ao configurar Rclone: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf"
     echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf."
-    rclone listremotes || true
     exit 1
   fi
-}
 
+  echo "Rclone instalado e remoto '${RCLONE_REMOTE}:' válido."
+}
 rclone_sync_from_drive() {
   tg_send "Sincronizando modelos via rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
