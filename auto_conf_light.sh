@@ -105,50 +105,90 @@ ensure_tooling() {
 ensure_rclone() {
   echo "Configurando Rclone"
 
-  # 1. Instala se não existir
+  # --- Paths e usuários ---
+  : "${RCLONE_REMOTE:=gdrive}"
+  : "${RCLONE_CONF_URL:=https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/rclone.conf}"
+  : "${RCLONE_CONF_SHA256:=}"
+
+  # Use $HOME por padrão (funciona como root e não-root)
+  : "${HOME:=${HOME:-/root}}"
+  : "${RCLONE_CONFIG_DIR:=${RCLONE_CONFIG_DIR:-${HOME}/.config/rclone}}"
+  : "${RCLONE_CONFIG_PATH:=${RCLONE_CONFIG_PATH:-${RCLONE_CONFIG_DIR}/rclone.conf}}"
+
+  # Se usuário setou RCLONE_CONFIG, respeite
+  if [[ -n "${RCLONE_CONFIG:-}" ]]; then
+    RCLONE_CONFIG_PATH="${RCLONE_CONFIG}"
+    RCLONE_CONFIG_DIR="$(dirname "$RCLONE_CONFIG_PATH")"
+  fi
+  export RCLONE_CONFIG="${RCLONE_CONFIG_PATH}"
+
+  # --- Garante rclone instalado ---
   if ! command -v rclone >/dev/null 2>&1; then
     if command -v apt-get >/dev/null 2>&1; then
-      apt-get "${APT_QUIET_OPTS[@]}" update -y
-      apt-get "${APT_QUIET_OPTS[@]}" install -y rclone || {
-        echo "ERRO: não foi possível instalar rclone."
-        exit 1               # <== encerra imediatamente
-      }
-    else
-      echo "ERRO: rclone não encontrado e não há apt-get para instalar."
-      exit 1
+      apt-get -qq -o=Dpkg::Use-Pty=0 update -y || true
+      apt-get -qq -o=Dpkg::Use-Pty=0 install -y rclone || true
     fi
   fi
-
-  # 2. Baixa e valida rclone.conf
-  if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
-    mkdir -p /root/.config/rclone
-    curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp \
-      || { echo "ERRO: não conseguiu baixar rclone.conf"; exit 1; }
-
-    if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
-      echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
-        || { echo "ERRO: checksum do rclone.conf inválido"; exit 1; }
-    fi
-
-    # Verifica formato mínimo
-    if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp \
-       && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
-      mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
-      chmod 600 /root/.config/rclone/rclone.conf
-    else
-      echo "ERRO: rclone.conf com conteúdo inesperado."
-      exit 1
-    fi
+  if ! command -v rclone >/dev/null 2>&1; then
+    # Fallback universal (sem exigir root): instala em ~/.local/bin
+    mkdir -p "${HOME}/.local/bin" /tmp/rclone-install
+    curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone-install/rclone.zip
+    command -v unzip >/dev/null 2>&1 || {
+      if command -v apt-get >/dev/null 2>&1; then
+        apt-get -qq -o=Dpkg::Use-Pty=0 install -y unzip || true
+      fi
+    }
+    unzip -q /tmp/rclone-install/rclone.zip -d /tmp/rclone-install
+    local RCDIR; RCDIR=$(find /tmp/rclone-install -maxdepth 1 -type d -name "rclone-*-linux-amd64" | head -n1)
+    cp -f "$RCDIR/rclone" "${HOME}/.local/bin/rclone"
+    chmod 0755 "${HOME}/.local/bin/rclone"
+    export PATH="${HOME}/.local/bin:${PATH}"
+    rm -rf /tmp/rclone-install
   fi
 
-  # 3. Verifica se o remoto existe
-  if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
-    echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf."
+  # Verifica de novo
+  if ! command -v rclone >/dev/null 2>&1; then
+    echo "ERRO: rclone não pôde ser instalado/colocado no PATH."
     exit 1
   fi
 
-  echo "Rclone instalado e remoto '${RCLONE_REMOTE}:' válido."
+  # --- Baixa/valida rclone.conf (se URL fornecida) ---
+  if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
+    mkdir -p "${RCLONE_CONFIG_DIR}"
+    local TMP="${RCLONE_CONFIG_PATH}.tmp"
+    curl -fsSL "${RCLONE_CONF_URL}" -o "${TMP}"
+
+    # SHA opcional
+    if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
+      echo "${RCLONE_CONF_SHA256}  ${TMP}" | sha256sum -c - \
+        || { echo "Falha na verificação do rclone.conf"; exit 1; }
+    fi
+
+    # Sanidade mínima (evita HTML/404)
+    if ! grep -q "^\[.*\]" "${TMP}" || ! grep -q "^type\s*=" "${TMP}"; then
+      echo "Conteúdo inesperado no rclone.conf (possível HTML/erro)."
+      head -n 40 "${TMP}" || true
+      rm -f "${TMP}"
+      exit 1
+    fi
+
+    mv -f "${TMP}" "${RCLONE_CONFIG_PATH}"
+    chmod 600 "${RCLONE_CONFIG_PATH}"
+  fi
+
+  # --- Confirma remoto existe ---
+  if ! rclone listremotes 2>/dev/null | grep -q "^${RCLONE_REMOTE}:"; then
+    echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf (${RCLONE_CONFIG_PATH})."
+    echo "Remotos disponíveis:"
+    rclone listremotes || true
+    exit 1
+  fi
+
+  # Diagnóstico leve
+  echo "rclone OK: $(rclone version | head -n1)"
+  echo "Config: ${RCLONE_CONFIG_PATH}"
 }
+
 rclone_sync_from_drive() {
   tg_send "Sincronizando modelos via rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
