@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail   # NOTE: -E para propagar ERR em funções/subshells
 
 # ================================================================================================
 # AMBIENTE BÁSICO
@@ -57,25 +57,28 @@ WORKFLOWS=()
 tg_can_notify() { [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]; }
 tg_send() {
   tg_can_notify || return 0
+  # NOTE: usa --data-urlencode para não quebrar com caracteres especiais
   curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -d "chat_id=${TELEGRAM_CHAT_ID}" \
-    -d "text=$1" \
-    -d "parse_mode=${TELEGRAM_PARSE_MODE}" \
-    -d "disable_web_page_preview=true" >/dev/null || true
+    --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+    --data-urlencode "text=$1" \
+    --data-urlencode "parse_mode=${TELEGRAM_PARSE_MODE}" \
+    --data-urlencode "disable_web_page_preview=true" >/dev/null || true
 }
 tg_escape_html() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
 notify_start() {
   local host; host="$(hostname | tg_escape_html)"
-  tg_send "🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
+  tg_send "🚀 <b>Provisioning iniciado</b>%0AHost: <code>${host}</code>%0AHora: <code>$(date -Iseconds)</code>"
 }
 notify_end_success() { tg_send "✅ Concluído!"; }
 notify_end_failure() {
-  local code="$?"; local host; host="$(hostname | tg_escape_html)"
-  tg_send "❌ <b>Provisioning falhou</b>\nHost: <code>${host}</code>\nCódigo: <code>${code}</code>\nHora: <code>$(date -Iseconds)</code>"
+  local code="$1" host
+  host="$(hostname | tg_escape_html)"
+  tg_send "❌ <b>Provisioning falhou</b>%0AHost: <code>${host}</code>%0ACódigo: <code>${code}</code>%0AHora: <code>$(date -Iseconds)</code>"
   exit "$code"
 }
-trap notify_end_failure ERR
+# NOTE: passa o $? da falha para a função (evita perder o código de erro)
+trap 'notify_end_failure $?' ERR
 
 # ================================================================================================
 # UTILITÁRIOS / PRÉ-REQS
@@ -83,7 +86,8 @@ trap notify_end_failure ERR
 ensure_tooling() {
   if ! command -v curl >/dev/null 2>&1;  then command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" update -y && apt-get "${APT_QUIET_OPTS[@]}" install -y curl;  fi
   if ! command -v wget >/dev/null 2>&1;  then command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" install -y wget;  fi
-  if ! command -v unzip >/dev/null 2>&1; then command -v apt-get >/devnull 2>&1 || true; command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" install -y unzip; fi
+  # NOTE: linha corrigida (antes tinha /devnull)
+  if ! command -v unzip >/dev/null 2>&1; then command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" install -y unzip; fi
   if ! command -v git >/dev/null 2>&1;   then command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" install -y git;   fi
   if ! command -v sha256sum >/dev/null 2>&1; then command -v apt-get >/dev/null 2>&1 && apt-get "${APT_QUIET_OPTS[@]}" install -y coreutils; fi
 }
@@ -131,7 +135,7 @@ ensure_rclone() {
   fi
 
   if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
-    tg_send "Falha ao configurar Rclone:  remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf"
+    tg_send "Falha ao configurar Rclone: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf"
     echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf."
     rclone listremotes || true
     exit 1
@@ -139,10 +143,8 @@ ensure_rclone() {
 }
 
 rclone_sync_from_drive() {
-  tg_send "Sincronizando  modelos rclone"
+  tg_send "Sincronizando modelos via rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
-
-  # upscale_models
 
   declare -A MAPS=(
     ["${RCLONE_REMOTE_ROOT}/models/checkpoints"]="${COMFYUI_DIR}/models/checkpoints"
@@ -191,52 +193,28 @@ COMFY="${COMFYCLI_VENV}/bin/comfy"
 comfy_bin() { echo "${COMFY}"; }
 
 install_comfy_cli_isolado() {
-  # aiohttp
   echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
 
-  # PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml')
-  "${COMFYCLI_VENV}/bin/pip" install "sageattention"
-  "${COMFYCLI_VENV}/bin/pip" install "deepdiff"
-  "${COMFYCLI_VENV}/bin/pip" install "aiohttp"
-  "${COMFYCLI_VENV}/bin/pip" install "huggingface-hub"
-  "${COMFYCLI_VENV}/bin/pip" install "toml" "torchvision"
-
- # ${COMFY} update all
-
-  # /venv/comfycli/bin/pip install "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml"
-
+  # Pacotes extras (sem barulho)
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
 
   [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
 }
 
 configure_comfy_cli_isolado() {
-  COMFY_PATH="/workspace/ComfyUI"
-  local WORKFLOWS_DIR="${COMFYUI_DIR}/user/default/workflows"
-  local MODELS_DIR="${COMFYUI_DIR}/models"
-  mkdir -p "$WORKFLOWS_DIR" "$MODELS_DIR"
-
-
-  # Define defaults e extras de launch (port/listen); telemetria desativada
+  # NOTE: set-default feito uma única vez com extras; tracking desativado
   "${COMFY}" tracking disable || true
   "${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
-  echo "Definindo diretório padrão: $COMFY_PATH"
-  "${COMFY}" set-default $COMFY_PATH
-
-
-
-
   [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
   [[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
-
-
 }
 
 # ================================================================================================
-# INSTALAÇÃO DO COMFYUI (NÃO-INTERATIVO)
+# INSTALAÇÃO DO COMFYUI (APENAS VIA COMFY-CLI)
 # ================================================================================================
 is_valid_comfy_repo() {
   [[ -d "${COMFYUI_DIR}/.git" ]] || return 1
@@ -254,31 +232,17 @@ prepare_clean_comfy_dir() {
 
 install_comfyui_via_cli_noninteractive() {
   prepare_clean_comfy_dir
-  # Modo não-interativo: --skip-prompt e telemetria já desativada antes
-  if "${COMFY}" --skip-prompt --workspace "${COMFYUI_DIR}" install >/dev/null 2>&1; then
-    return 0
-  fi
-  # Fallback: tenta sem redirecionar stdout (para ver erro) e depois git
-  "${COMFY}" --skip-prompt --workspace "${COMFYUI_DIR}" install || return 1
+  # Modo não-interativo: --skip-prompt e telemetria já desativada
+  "${COMFY}" --skip-prompt --workspace "${COMFYUI_DIR}" install
 }
 
-fallback_install_comfyui_git() {
-  echo "Fallback: git clone ComfyUI..."
-  rm -rf "${COMFYUI_DIR}"
-  git clone "${GIT_QUIET_OPTS[@]}" --depth 1 https://github.com/comfyanonymous/ComfyUI "${COMFYUI_DIR}"
-  if [[ -f "${COMFYUI_DIR}/requirements.txt" ]]; then
-    pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir -r "${COMFYUI_DIR}/requirements.txt"
-  fi
-}
-
-install_comfyui_replacing_standard() {
-
-  echo "==> ComfyUI via comfy-cli (não-interativo)"
+install_comfyui_or_fail() {
+  echo "==> Instalando ComfyUI via comfy-cli (não-interativo)"
   if install_comfyui_via_cli_noninteractive; then
     echo "ComfyUI instalado via comfy-cli."
   else
-    echo "comfy-cli falhou; usando fallback git..."
-    fallback_install_comfyui_git
+    echo "ERRO: comfy-cli falhou ao instalar o ComfyUI. Abortando (sem fallback git)."
+    return 1
   fi
 }
 
@@ -392,8 +356,8 @@ provisioning_start() {
   install_comfy_cli_isolado
   configure_comfy_cli_isolado
 
-  # 2) instalar ComfyUI (não-interativo)
-  #install_comfyui_replacing_standard
+  # 2) instalar ComfyUI (não-interativo; sem fallback)
+  install_comfyui_or_fail
 
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
