@@ -193,24 +193,22 @@ install_comfy_cli_isolado() {
 }
 
 configure_comfy_cli_isolado() {
+  COMFY_PATH="/workspace/ComfyUI"
   local WORKFLOWS_DIR="${COMFYUI_DIR}/user/default/workflows"
   local MODELS_DIR="${COMFYUI_DIR}/models"
   mkdir -p "$WORKFLOWS_DIR" "$MODELS_DIR"
+
 
   # Define defaults e extras de launch (port/listen); telemetria desativada
   "${COMFY}" tracking disable || true
   "${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
-  # Também registra diretórios de modelos (se suportado pela sua versão do CLI)
-  #"${COMFY}" set-default --workflows-dir "${WORKFLOWS_DIR}" || true
-  #"${COMFY}" set-default --models-dir "${MODELS_DIR}"       || true
-  #"${COMFY}" set-default --unet-dir       "${COMFYUI_DIR}/models/unet"        || true
-  #"${COMFY}" set-default --vae-dir        "${COMFYUI_DIR}/models/vae"         || true
-  #"${COMFY}" set-default --clip-dir       "${COMFYUI_DIR}/models/clip"        || true
-  #"${COMFY}" set-default --loras-dir      "${COMFYUI_DIR}/models/loras"       || true
-  #"${COMFY}" set-default --controlnet-dir "${COMFYUI_DIR}/models/controlnet"  || true
-  #"${COMFY}" set-default --ipadapter-dir  "${COMFYUI_DIR}/models/ipadapter"   || true
-  #"${COMFY}" set-default --embeddings-dir "${COMFYUI_DIR}/models/embeddings"  || true
+  echo "Definindo diretório padrão: $COMFY_PATH"
+  "${COMFY}" set-default $COMFY_PATH
+
+
+
+
   [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
   [[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
 
