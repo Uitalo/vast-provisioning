@@ -207,10 +207,10 @@ install_comfy_cli_isolado() {
 configure_comfy_cli_isolado() {
   # NOTE: set-default feito uma única vez com extras; tracking desativado
   "${COMFY}" tracking disable || true
-  "${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
+  #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
-  [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
-  [[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
+ # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
+  #[[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
 }
 
 # ================================================================================================
