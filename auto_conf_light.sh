@@ -357,7 +357,7 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
-  install_comfyui_or_fail
+  #install_comfyui_or_fail
 
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
