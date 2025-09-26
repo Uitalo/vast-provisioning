@@ -105,17 +105,16 @@ ensure_tooling() {
 ensure_rclone() {
   echo "Configurando Rclone"
 
-  # --- Paths e usuários ---
+  # --- Defaults e caminhos seguros (funciona como root e não-root) ---
   : "${RCLONE_REMOTE:=gdrive}"
   : "${RCLONE_CONF_URL:=https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/rclone.conf}"
   : "${RCLONE_CONF_SHA256:=}"
 
-  # Use $HOME por padrão (funciona como root e não-root)
   : "${HOME:=${HOME:-/root}}"
   : "${RCLONE_CONFIG_DIR:=${RCLONE_CONFIG_DIR:-${HOME}/.config/rclone}}"
   : "${RCLONE_CONFIG_PATH:=${RCLONE_CONFIG_PATH:-${RCLONE_CONFIG_DIR}/rclone.conf}}"
 
-  # Se usuário setou RCLONE_CONFIG, respeite
+  # Respeita variável externa se definida
   if [[ -n "${RCLONE_CONFIG:-}" ]]; then
     RCLONE_CONFIG_PATH="${RCLONE_CONFIG}"
     RCLONE_CONFIG_DIR="$(dirname "$RCLONE_CONFIG_PATH")"
@@ -130,7 +129,7 @@ ensure_rclone() {
     fi
   fi
   if ! command -v rclone >/dev/null 2>&1; then
-    # Fallback universal (sem exigir root): instala em ~/.local/bin
+    # Fallback universal (sem exigir root): ~/.local/bin
     mkdir -p "${HOME}/.local/bin" /tmp/rclone-install
     curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone-install/rclone.zip
     command -v unzip >/dev/null 2>&1 || {
@@ -145,12 +144,7 @@ ensure_rclone() {
     export PATH="${HOME}/.local/bin:${PATH}"
     rm -rf /tmp/rclone-install
   fi
-
-  # Verifica de novo
-  if ! command -v rclone >/dev/null 2>&1; then
-    echo "ERRO: rclone não pôde ser instalado/colocado no PATH."
-    exit 1
-  fi
+  command -v rclone >/dev/null 2>&1 || { echo "ERRO: rclone não está no PATH."; exit 1; }
 
   # --- Baixa/valida rclone.conf (se URL fornecida) ---
   if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
@@ -164,8 +158,22 @@ ensure_rclone() {
         || { echo "Falha na verificação do rclone.conf"; exit 1; }
     fi
 
-    # Sanidade mínima (evita HTML/404)
-    if ! grep -q "^\[.*\]" "${TMP}" || ! grep -q "^type\s*=" "${TMP}"; then
+    # --- AUTO-REFORMAT: arquivo “tudo numa linha” -> INI válido linha-a-linha ---
+    # (Não quebra um arquivo já formatado; só injeta quebras se necessário)
+    if ! grep -qE '^\[.*\]' "${TMP}" || ! grep -qE '^type[[:space:]]*=' "${TMP}"; then
+      # tenta inserir quebras antes das chaves conhecidas
+      sed -i -E \
+        -e 's/\[([A-Za-z0-9._-]+)\][[:space:]]*/[\1]\n/g' \
+        -e 's/[[:space:]]+type[[:space:]]*=/\ntype = /g' \
+        -e 's/[[:space:]]+scope[[:space:]]*=/\nscope = /g' \
+        -e 's/[[:space:]]+token[[:space:]]*=/\ntoken = /g' \
+        -e 's/[[:space:]]+client_id[[:space:]]*=/\nclient_id = /g' \
+        -e 's/[[:space:]]+client_secret[[:space:]]*=/\nclient_secret = /g' \
+        "${TMP}"
+    fi
+
+    # Sanidade mínima pós-reformat (evita HTML/404)
+    if ! grep -qE '^\[.*\]' "${TMP}" || ! grep -qE '^type[[:space:]]*=' "${TMP}"; then
       echo "Conteúdo inesperado no rclone.conf (possível HTML/erro)."
       head -n 40 "${TMP}" || true
       rm -f "${TMP}"
@@ -188,7 +196,6 @@ ensure_rclone() {
   echo "rclone OK: $(rclone version | head -n1)"
   echo "Config: ${RCLONE_CONFIG_PATH}"
 }
-
 rclone_sync_from_drive() {
   tg_send "Sincronizando modelos via rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
