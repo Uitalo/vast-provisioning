@@ -121,7 +121,7 @@ ensure_rclone() {
     curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp
     if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
       echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
-        || { echo "Falha na verificação do rclone.conf"; exit 1; }
+        || {  tg_send "Falha na verificação do rclone.conf"; exit 1; }
     fi
     if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
       mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
