@@ -184,10 +184,23 @@ COMFY="${COMFYCLI_VENV}/bin/comfy"
 comfy_bin() { echo "${COMFY}"; }
 
 install_comfy_cli_isolado() {
+  # aiohttp
   echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
+
+  # PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml')
+  "${COMFYCLI_VENV}/bin/pip" install "sageattention"
+  "${COMFYCLI_VENV}/bin/pip" install "deepdiff"
+  "${COMFYCLI_VENV}/bin/pip" install "aiohttp"
+  "${COMFYCLI_VENV}/bin/pip" install "huggingface-hub"
+  "${COMFYCLI_VENV}/bin/pip" install "toml" "torchvision"
+
+ # ${COMFY} update all
+
+  # /venv/comfycli/bin/pip install "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml"
+
 
   [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
 }
