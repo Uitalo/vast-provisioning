@@ -121,7 +121,7 @@ ensure_rclone() {
     curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp
     if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
       echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
-        || {  tg_send "Falha na verificação do rclone.conf"; exit 1; }
+        || { echo "Falha na verificação do rclone.conf"; exit 1; }
     fi
     if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
       mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
@@ -357,7 +357,7 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
-  #install_comfyui_or_fail
+  install_comfyui_or_fail
 
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
