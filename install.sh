@@ -100,6 +100,6 @@ comfy set-default $COMFY_PATH
 # Altere --port se quiser outra porta (padrão 8080 abaixo)
 comfy launch --background -- --listen 0.0.0.0 --port 8080
 
-# dasd
+# dasd çl
 
 
