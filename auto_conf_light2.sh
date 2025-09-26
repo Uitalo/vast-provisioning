@@ -139,6 +139,7 @@ ensure_rclone() {
 }
 
 rclone_sync_from_drive() {
+  tg_send "Sincronizando  modelos rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
 
   declare -A MAPS=(
