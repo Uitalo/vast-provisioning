@@ -142,6 +142,8 @@ rclone_sync_from_drive() {
   tg_send "Sincronizando  modelos rclone"
   echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
 
+  # upscale_models
+
   declare -A MAPS=(
     ["${RCLONE_REMOTE_ROOT}/models/checkpoints"]="${COMFYUI_DIR}/models/checkpoints"
     ["${RCLONE_REMOTE_ROOT}/models/unet"]="${COMFYUI_DIR}/models/unet"
@@ -151,6 +153,7 @@ rclone_sync_from_drive() {
     ["${RCLONE_REMOTE_ROOT}/models/controlnet"]="${COMFYUI_DIR}/models/controlnet"
     ["${RCLONE_REMOTE_ROOT}/models/ipadapter"]="${COMFYUI_DIR}/models/ipadapter"
     ["${RCLONE_REMOTE_ROOT}/models/embeddings"]="${COMFYUI_DIR}/models/embeddings"
+    ["${RCLONE_REMOTE_ROOT}/models/upscale_models"]="${COMFYUI_DIR}/models/upscale_models"
   )
 
   for SRC in "${!MAPS[@]}"; do
