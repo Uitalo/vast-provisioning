@@ -381,6 +381,10 @@ provisioning_start() {
   provisioning_get_nodes
   provisioning_get_pip_packages
 
+  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
+  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
+
+
   # 6) FLUX dev/schnell e downloads faltantes
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
   if provisioning_has_valid_hf_token; then
