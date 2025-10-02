@@ -372,7 +372,7 @@ provisioning_start() {
   rclone_sync_from_drive
 
   # 4) restaurar snapshot do Drive e aplicar no workspace
-  rclone_copy_workflows_from_remote
+  #rclone_copy_workflows_from_remote
   restore_snapshot_from_drive
   "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
 
