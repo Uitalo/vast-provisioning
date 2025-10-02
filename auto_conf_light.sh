@@ -376,13 +376,13 @@ provisioning_start() {
   restore_snapshot_from_drive
   "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
 
-  # 5) nodes e pacotes adicionais
+  # 5) nodes e pacotes adicionaiskkkk
   provisioning_get_apt_packages
   provisioning_get_nodes
   provisioning_get_pip_packages
 
-  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
-  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
+  #"${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
+  #"${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
 
 
   # 6) FLUX dev/schnell e downloads faltantes
