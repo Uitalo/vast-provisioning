@@ -158,28 +158,6 @@ rclone_sync_from_drive() {
     ["${RCLONE_REMOTE_ROOT}/models/upscale_models"]="${COMFYUI_DIR}/models/upscale_models"
   )
 
-rclone_copy_workflows_from_remote() {
-  echo "Copiando workflows do remoto (${RCLONE_REMOTE}) para o cliente..."
-
-  # Define o diretório local de destino para os workflows
-  local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
-
-  # Cria o diretório se não existir
-  mkdir -p "$WF_LOCAL"
-
-  # Realiza a cópia dos workflows do remoto para o local
-  # Usa as flags configuradas e o comando de cópia especificado (copy ou sync)
-  echo "Copiando: ${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR} -> ${WF_LOCAL}"
-  # todo: modificar diretório:
-  rclone ${RCLONE_COPY_CMD} "gdrive:/ComfyUI/user/workflows" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
-
-  # Notifica via Telegram, se configurado
-  tg_send "Workflows sincronizados do remoto para o cliente"
-
-  echo "Cópia dos workflows finalizada."
-}
-
-
   for SRC in "${!MAPS[@]}"; do
     DST="${MAPS[$SRC]}"
     mkdir -p "$DST"
@@ -207,8 +185,6 @@ restore_snapshot_from_drive() {
   ln -sf "$(basename "${SNAPSHOT_LOCAL}")" "${dst_dir}/latest.json" || true
 }
 
-
-
 # ================================================================================================
 # COMFY-CLI ISOLADO
 # ================================================================================================
@@ -229,11 +205,8 @@ install_comfy_cli_isolado() {
 }
 
 configure_comfy_cli_isolado() {
-  echo "Comfigurando comfy-cli"
   # NOTE: set-default feito uma única vez com extras; tracking desativado
   "${COMFY}" tracking disable || true
-
-  echo "Definindo diretório padrão de  comfy-cli: ${COMFYUI_DIR}"
   "${COMFY}" set-default "${COMFYUI_DIR}"
   #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
@@ -269,7 +242,6 @@ provisioning_get_files() {
 }
 
 provisioning_download() {
-  echo "Realizando download externo dos modelos"
   local url="$1"; local outdir="$2"; local auth_token=""; local filename
   if [[ -n "${HF_TOKEN:-}" && $url =~ ^https://([a-zA-Z0-9_-]+\.)?huggingface\.co(/|$|\?) ]]; then
     auth_token="$HF_TOKEN"
@@ -307,7 +279,6 @@ provisioning_print_header() {
 provisioning_print_end() { printf "\nProvisioning complete.\n\n"; }
 
 provisioning_get_apt_packages() {
-  echo "Instalando pacotes Apt"
   if [[ ${#APT_PACKAGES[@]} -gt 0 ]] && command -v apt-get >/dev/null 2>&1; then
     apt-get "${APT_QUIET_OPTS[@]}" update -y
     apt-get "${APT_QUIET_OPTS[@]}" install -y "${APT_PACKAGES[@]}"
@@ -335,7 +306,6 @@ provisioning_get_nodes() {
 }
 
 provisioning_start() {
-  echo "Iniciando instalação.."
   provisioning_print_header
   notify_start
 
@@ -372,18 +342,13 @@ provisioning_start() {
   rclone_sync_from_drive
 
   # 4) restaurar snapshot do Drive e aplicar no workspace
-  rclone_copy_workflows_from_remote
   restore_snapshot_from_drive
   "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
 
-  # 5) nodes e pacotes adicionaiskkkk
+  # 5) nodes e pacotes adicionais
   provisioning_get_apt_packages
   provisioning_get_nodes
   provisioning_get_pip_packages
-
-  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
-  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
-
 
   # 6) FLUX dev/schnell e downloads faltantes
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
