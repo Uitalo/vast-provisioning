@@ -372,7 +372,7 @@ provisioning_start() {
   rclone_sync_from_drive
 
   # 4) restaurar snapshot do Drive e aplicar no workspace
-  #rclone_copy_workflows_from_remote
+  rclone_copy_workflows_from_remote
   restore_snapshot_from_drive
   "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
 
@@ -381,8 +381,8 @@ provisioning_start() {
   provisioning_get_nodes
   provisioning_get_pip_packages
 
-  #"${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
-  #"${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
+  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node update all
+  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node install ComfyUI-Impact-Pack
 
 
   # 6) FLUX dev/schnell e downloads faltantes
