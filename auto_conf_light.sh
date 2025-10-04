@@ -40,6 +40,8 @@ UPSCALER_MODELS=("https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGA
 DIFFUSION_MODELS=()
 WORKFLOWS=()
 
+
+# /workflows/ComfyUI/user/default/workflows
 # Caminho do snapshot remoto/local
 : "${SNAPSHOT_REMOTE:=ComfyUI/snapshots/current.json}"   # relativo ao remoto do rclone (ex.: gdrive:)
 : "${SNAPSHOT_LOCAL:=${COMFYUI_DIR}/user/default/ComfyUI-Manager/snapshots/current.json}"
@@ -166,7 +168,8 @@ rclone_sync_from_drive() {
 
   local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
   mkdir -p "$WF_LOCAL"
-  rclone ${RCLONE_COPY_CMD} "/ComfyUI/user/workflows" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
+  #rclone ${RCLONE_COPY_CMD} "/ComfyUI/user/workflows" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
+  rclone copy gdrive:/ComfyUI/user/workflows /workspace/ComfyUI/user/default/workflows
 
   echo "Sincronização via rclone finalizada."
 }
