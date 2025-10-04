@@ -166,7 +166,7 @@ rclone_sync_from_drive() {
 
   local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
   mkdir -p "$WF_LOCAL"
-  rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR}" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
+  rclone ${RCLONE_COPY_CMD} "/ComfyUI/user/workflows" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
 
   echo "Sincronização via rclone finalizada."
 }
