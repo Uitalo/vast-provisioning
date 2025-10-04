@@ -331,6 +331,7 @@ provisioning_start() {
     "${COMFYUI_DIR}/custom_nodes" \
     "$(dirname "${SNAPSHOT_LOCAL}")"
 
+  tg_send "Instalando comfy-cli"
   # 1) comfy-cli isolado + config (não-interativo; tracking off)
   install_comfy_cli_isolado
   configure_comfy_cli_isolado
