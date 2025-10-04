@@ -207,7 +207,7 @@ install_comfy_cli_isolado() {
 configure_comfy_cli_isolado() {
   # NOTE: set-default feito uma única vez com extras; tracking desativado
   "${COMFY}" tracking disable || true
-  "${COMFY}" set-default "${COMFYUI_DIR}"
+  "${COMFY}" set-default /workspace/ComfyUI
   #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
  # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
@@ -337,6 +337,7 @@ provisioning_start() {
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
 
+  tg_send "Instalando e configurando Rclone"
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
   rclone_sync_from_drive
