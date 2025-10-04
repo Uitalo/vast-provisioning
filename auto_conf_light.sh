@@ -207,7 +207,7 @@ install_comfy_cli_isolado() {
 configure_comfy_cli_isolado() {
   # NOTE: set-default feito uma única vez com extras; tracking desativado
   "${COMFY}" tracking disable || true
-  "${COMFY}" set-default /workspace/ComfyUI
+  "${COMFY}" set-default "/workspace/ComfyUI" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
   #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
  # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
@@ -334,6 +334,7 @@ provisioning_start() {
   tg_send "Instalando comfy-cli"
   # 1) comfy-cli isolado + config (não-interativo; tracking off)
   install_comfy_cli_isolado
+  tg_send "Comfigurandp comfy-cli"
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
