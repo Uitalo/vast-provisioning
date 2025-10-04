@@ -21,7 +21,7 @@ PIP_QUIET_OPTS=(-q --progress-bar off --disable-pip-version-check --no-input)
 GIT_QUIET_OPTS=(--quiet)
 
 APT_PACKAGES=()
-PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml')
+PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface-hub' 'toml' 'openai' 'blend_modes' 'gguf')
 NODES=()
 
 CHECKPOINTS_MODELS=()
@@ -344,10 +344,14 @@ provisioning_start() {
   ensure_rclone
   rclone_sync_from_drive
 
+  tg_send "Restaurando Snapshots"
+
   # 4) restaurar snapshot do Drive e aplicar no workspace
   restore_snapshot_from_drive
   "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
+  "${COMFY}" node update all
 
+  tg_send "Instalando Nodes"
   # 5) nodes e pacotes adicionais
   provisioning_get_apt_packages
   provisioning_get_nodes
@@ -355,14 +359,9 @@ provisioning_start() {
 
   # 6) FLUX dev/schnell e downloads faltantes
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
-  if provisioning_has_valid_hf_token; then
-    UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors")
-    VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors")
-  else
-    UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors")
-    VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors")
-    sed -i 's/flux1-dev\.safetensors/flux1-schnell.safetensors/g' "${workflows_dir}/flux_dev_example.json" || true
-  fi
+
+
+
   provisioning_get_files "${COMFYUI_DIR}/models/unet" "${UNET_MODELS[@]}"
   provisioning_get_files "${COMFYUI_DIR}/models/vae"  "${VAE_MODELS[@]}"
   provisioning_get_files "${COMFYUI_DIR}/models/clip" "${CLIP_MODELS[@]}"
