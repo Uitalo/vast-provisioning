@@ -99,7 +99,7 @@ ensure_tooling() {
 : "${RCLONE_CONF_SHA256:=}"
 : "${RCLONE_REMOTE:=gdrive}"
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
-: "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
+: "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=ComfyUI/user/workflows}"
 : "${RCLONE_COPY_CMD:=copy}"  # ou "sync"
 
 ensure_rclone() {
