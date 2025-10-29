@@ -238,7 +238,7 @@ try:
 except Exception:
     sys.exit(0)
 PY
-)"
+)
 
   # Fallbacks (se por algum motivo o venv principal não tiver torch)
   if [[ -z "${TORCH_BASE_VER}" ]]; then
