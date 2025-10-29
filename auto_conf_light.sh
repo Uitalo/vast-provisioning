@@ -196,7 +196,7 @@ COMFY="${COMFYCLI_VENV}/bin/comfy"
 comfy_bin() { echo "${COMFY}"; }
 
 install_comfy_cli_isolado() {
-  echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
+  tg_send "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
 
