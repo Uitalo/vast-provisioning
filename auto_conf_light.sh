@@ -265,7 +265,7 @@ install_comfy_cli_isolado() {
   "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
 
   # Pacotes extras (sem barulho)
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
+  #"${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
 
   [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
 }
