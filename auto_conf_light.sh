@@ -79,11 +79,6 @@ notify_end_failure() {
   tg_send "❌ <b>Provisioning falhou</b>%0AHost: <code>${host}</code>%0ACódigo: <code>${code}</code>%0AHora: <code>$(date -Iseconds)</code>"
   exit "$code"
 }
-
-
-# Settings:
-tg_send "Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}'"
-
 # NOTE: passa o $? da falha para a função (evita perder o código de erro)
 trap 'notify_end_failure $?' ERR
 
@@ -108,6 +103,11 @@ ensure_tooling() {
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=ComfyUI/user/workflows}"
 : "${RCLONE_COPY_CMD:=copy}"  # ou "sync"
+
+
+
+# Settings:
+tg_send "Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}'"
 
 ensure_rclone() {
   echo "Configurando Rclone"
@@ -212,96 +212,16 @@ install_comfy_cli_isolado() {
   [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
 }
 
-install_comfy_cli_isolado() {
-  echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
-  python -m venv "${COMFYCLI_VENV}"
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
+configure_comfy_cli_isolado() {
+  # NOTE: set-default feito uma única vez com extras; tracking desativado
+  "${COMFY}" tracking disable || true
+  "${COMFY}" set-default "/workspace/ComfyUI" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
+  #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
 
-  # --- Detecta versões/sufixo CUDA a partir do venv principal (/venv/main já está 'source'd) ---
-  local TORCH_BASE_VER CU_TAG TV_BASE_VER TA_BASE_VER
-  TORCH_BASE_VER="$(python - <<'PY' 2>/dev/null || true
-import re, sys
-try:
-    import torch
-    print(re.sub(r'\+.*$', '', torch.__version__))
-except Exception:
-    sys.exit(0)
-PY
-)"
-  CU_TAG="$(python - <<'PY' 2>/dev/null || true
-import re, sys
-try:
-    import torch
-    m = re.search(r'\+cu(\d+)', torch.__version__)
-    print(f"cu{m.group(1)}" if m else "cpu")
-except Exception:
-    sys.exit(0)
-PY
-)"
-  TV_BASE_VER="$(python - <<'PY' 2>/dev/null || true
-import re, sys
-try:
-    import torchvision
-    print(re.sub(r'\+.*$', '', torchvision.__version__))
-except Exception:
-    sys.exit(0)
-PY
-)"
-  TA_BASE_VER="$(python - <<'PY' 2>/dev/null || true
-import re, sys
-try:
-    import torchaudio
-    print(re.sub(r'\+.*$', '', torchaudio.__version__))
-except Exception:
-    sys.exit(0)
-PY
-)
-
-  # Fallbacks (se por algum motivo o venv principal não tiver torch)
-  if [[ -z "${TORCH_BASE_VER}" ]]; then
-    # Alvo seguro: CUDA 12.9 presente na imagem -> tentar torch 2.8.0 + cu129
-    TORCH_BASE_VER="2.8.0"
-    CU_TAG="cu129"
-  fi
-
-  # Monta extra-index da PyTorch se for CUDA
-  local EXTRA_INDEX_ARGS=()
-  if [[ "${CU_TAG}" != "cpu" ]]; then
-    EXTRA_INDEX_ARGS=(--extra-index-url "https://download.pytorch.org/whl/${CU_TAG}")
-  else
-    EXTRA_INDEX_ARGS=(--extra-index-url "https://download.pytorch.org/whl/cpu")
-  fi
-
-  # --- 1) comfy-cli (não puxa torch) ---
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
-
-  # --- 2) torch primeiro (versão/sufixo alinhados ao venv principal) ---
-  # Ex.: torch==2.8.0+cu129
-  local TORCH_PIN="torch==${TORCH_BASE_VER}"
-  # pip aceita '==2.8.0+cu129' quando usa o extra-index correto
-  TORCH_PIN="${TORCH_PIN}+${CU_TAG#cu}"
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir \
-    "${EXTRA_INDEX_ARGS[@]}" "${TORCH_PIN}"
-
-  # --- 3) torchvision/torchaudio se existirem no venv principal (replica as versões) ---
-  if [[ -n "${TV_BASE_VER}" ]]; then
-    "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir \
-      "${EXTRA_INDEX_ARGS[@]}" "torchvision==${TV_BASE_VER}+${CU_TAG#cu}"
-  fi
-  if [[ -n "${TA_BASE_VER}" ]]; then
-    "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir \
-      "${EXTRA_INDEX_ARGS[@]}" "torchaudio==${TA_BASE_VER}+${CU_TAG#cu}"
-  fi
-
-  # --- 4) só depois: extras que dependem de torch ---
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir \
-    "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "blend_modes" "gguf"
-
-  # Opcional: se quiser requests/urllib3/yarl pinados iguais ao portal, faça aqui.
-
-  # Link de conveniência
-  [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
+ # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
+  #[[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
 }
+
 # ================================================================================================
 # INSTALAÇÃO DO COMFYUI (APENAS VIA COMFY-CLI)
 # ================================================================================================
