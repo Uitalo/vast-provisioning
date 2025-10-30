@@ -79,6 +79,11 @@ notify_end_failure() {
   tg_send "❌ <b>Provisioning falhou</b>%0AHost: <code>${host}</code>%0ACódigo: <code>${code}</code>%0AHora: <code>$(date -Iseconds)</code>"
   exit "$code"
 }
+
+
+# Infomations:
+tg_send "Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}'"
+
 # NOTE: passa o $? da falha para a função (evita perder o código de erro)
 trap 'notify_end_failure $?' ERR
 
