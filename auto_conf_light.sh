@@ -261,14 +261,14 @@ provisioning_has_valid_hf_token() {
 install_comfy_cli_isolado() {
   #echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
  # python -m venv "${COMFYCLI_VENV}"
-  pip --no-cache-dir comfy-cli
+  pip install --no-cache-dir comfy-cli
   #//"${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
  # "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
 
   # Pacotes extras (sem barulho)
   #"${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
 
-  [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
+  #[[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
 }
 
 configure_comfy_cli_isolado() {
