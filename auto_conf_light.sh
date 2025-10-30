@@ -200,27 +200,6 @@ COMFYCLI_VENV=/venv/comfycli
 COMFY="${COMFYCLI_VENV}/bin/comfy"
 comfy_bin() { echo "${COMFY}"; }
 
-install_comfy_cli_isolado() {
-  echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
-  python -m venv "${COMFYCLI_VENV}"
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
-
-  # Pacotes extras (sem barulho)
-  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
-
-  [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
-}
-
-configure_comfy_cli_isolado() {
-  # NOTE: set-default feito uma única vez com extras; tracking desativado
-  "${COMFY}" tracking disable || true
-  "${COMFY}" set-default "/workspace/ComfyUI" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
-  #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
-
- # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
-  #[[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
-}
 
 # ================================================================================================
 # INSTALAÇÃO DO COMFYUI (APENAS VIA COMFY-CLI)
@@ -277,6 +256,32 @@ provisioning_has_valid_hf_token() {
   code=$(curl -o /dev/null -s -w "%{http_code}" -H "Authorization: Bearer $HF_TOKEN" https://huggingface.co/api/whoami-v2)
   [[ "$code" -eq 200 ]]
 }
+
+
+install_comfy_cli_isolado() {
+  echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
+  python -m venv "${COMFYCLI_VENV}"
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
+
+  # Pacotes extras (sem barulho)
+  "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" "sageattention" "deepdiff" "aiohttp" "huggingface-hub" "toml" "torchvision"
+
+  [[ -d /venv/main/bin ]] && ln -sf "${COMFY}" /venv/main/bin/ || true
+}
+
+configure_comfy_cli_isolado() {
+  # NOTE: set-default feito uma única vez com extras; tracking desativado
+  "${COMFY}" tracking disable || true
+  "${COMFY}" set-default "/workspace/ComfyUI" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
+  #"${COMFY}" set-default "${COMFYUI_DIR}" --launch-extras="${COMFY_LAUNCH_EXTRAS}" || true
+
+ # [[ -n "${HF_TOKEN:-}" ]]      && "${COMFY}" set-default --hf-api-token "$HF_TOKEN" || true
+  #[[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
+}
+
+
+
 
 # ================================================================================================
 # FLUXO PRINCIPAL
