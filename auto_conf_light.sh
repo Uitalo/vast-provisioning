@@ -261,7 +261,7 @@ provisioning_has_valid_hf_token() {
 install_comfy_cli_isolado() {
   #echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
  # python -m venv "${COMFYCLI_VENV}"
-  pip install comfy-cli
+  pip --no-cache-dir comfy-cli
   #//"${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --upgrade pip
  # "${COMFYCLI_VENV}/bin/pip" install "${PIP_QUIET_OPTS[@]}" --no-cache-dir comfy-cli
 
