@@ -281,7 +281,7 @@ configure_comfy_cli_isolado() {
   #[[ -n "${CIVITAI_TOKEN:-}" ]] && "${COMFY}" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
 }
 
-
+#comfy --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
 
 
 # ================================================================================================
@@ -362,9 +362,13 @@ provisioning_start() {
 
   # 4) restaurar snapshot do Drive e aplicar no workspace
   restore_snapshot_from_drive
-  "${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
-  "${COMFY}" node update all
+  #"${COMFY}" --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
+  #"${COMFY}" node update all
+  # /venv/main/bin/comfy
 
+  /venv/main/bin/comfy --skip-prompt --workspace="${COMFYUI_DIR}" node restore-snapshot "${SNAPSHOT_LOCAL}" || true
+  /venv/main/bin/comfy node update all
+  #comfy --skip-prompt --workspace=/workspace/ComfyUI/user/default/ComfyUI-Manager/snapshots node restore-snapshot  /workspace/ComfyUI/user/default/ComfyUI-Manager/snapshots/current.json || true
   tg_send "Instalando Nodes"
   # 5) nodes e pacotes adicionais
   provisioning_get_apt_packages
