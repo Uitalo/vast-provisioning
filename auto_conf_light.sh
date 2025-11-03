@@ -358,9 +358,10 @@ provisioning_start() {
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
 
-  if [[ $DOWNLOAD_GDRIVE_MODELS ]]; then
+
+  if [[ "$DOWNLOAD_GDRIVE_MODELS" == "true" ]]; then
     echo "Baixando modelos do google drive..."
-    # shellcheck disable=SC1091
+    # coloque aqui o comando que você quer executar
     rclone_sync_from_drive
   fi
 
