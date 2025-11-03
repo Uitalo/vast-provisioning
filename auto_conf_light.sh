@@ -359,6 +359,7 @@ provisioning_start() {
   ensure_rclone
 
   if [[ $DOWNLOAD_GDRIVE_MODELS ]]; then
+    echo "Baixando modelos do google drive..."
     # shellcheck disable=SC1091
     rclone_sync_from_drive
   fi
