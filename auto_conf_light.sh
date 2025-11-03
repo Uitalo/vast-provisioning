@@ -298,6 +298,7 @@ provisioning_get_apt_packages() {
     apt-get "${APT_QUIET_OPTS[@]}" install -y "${APT_PACKAGES[@]}"
   fi
 }
+
 provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
     pip install "${PIP_QUIET_OPTS[@]}" --no-cache-dir "${PIP_PACKAGES[@]}"
@@ -356,7 +357,13 @@ provisioning_start() {
   tg_send "Instalando e configurando Rclone"
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
-  rclone_sync_from_drive
+
+  if [[ $DOWNLOAD_GDRIVE_MODELS ]]; then
+    # shellcheck disable=SC1091
+    rclone_sync_from_drive
+  fi
+
+
 
   tg_send "Restaurando Snapshots"
 
@@ -377,7 +384,6 @@ provisioning_start() {
 
   # 6) FLUX dev/schnell e downloads faltantes
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
-
 
 
   provisioning_get_files "${COMFYUI_DIR}/models/unet" "${UNET_MODELS[@]}"
