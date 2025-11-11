@@ -113,7 +113,9 @@ ensure_tooling() {
 
 
 # Settings:
-tg_send "Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}'"
+tg_send "Settings:
+Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}
+Restaurar snapshots: '${DOWNLOAD_GDRIVE_MODELS}"
 
 ensure_rclone() {
   echo "Configurando Rclone"
@@ -186,6 +188,7 @@ rclone_sync_from_drive() {
 }
 
 restore_snapshot_from_drive() {
+  tg_send "Restaurando Snapshots"
   local dst_dir; dst_dir="$(dirname "${SNAPSHOT_LOCAL}")"
   mkdir -p "${dst_dir}"
   echo "Restaurando snapshot do Drive: ${RCLONE_REMOTE}:${SNAPSHOT_REMOTE} -> ${SNAPSHOT_LOCAL}"
@@ -359,7 +362,6 @@ provisioning_start() {
   configure_comfy_cli_isolado
 
   # 2) instalar ComfyUI (não-interativo; sem fallback)
-
   tg_send "Instalando e configurando Rclone"
   # 3) rclone + sync de artefatos (pouco verboso)
   ensure_rclone
@@ -369,14 +371,16 @@ provisioning_start() {
     echo "Baixando modelos do google drive..."
     # coloque aqui o comando que você quer executar
     rclone_sync_from_drive
+  else
+    echo "Os modelos não serão baixados do remoto"
   fi
 
 
-  if [[ "$DOWNLOAD_GDRIVE_MODELS" == "true" ]]; then
-    tg_send "Restaurando Snapshots"
-
+  if [[ "$RESTORE_SNAPSHOTS" == "true" ]]; then
     # 4) restaurar snapshot do Drive e aplicar no workspace
     restore_snapshot_from_drive
+  else
+    echo "Os snapshotes não serão restaurados"
   fi
 
 
