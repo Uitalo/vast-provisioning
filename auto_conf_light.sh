@@ -331,8 +331,8 @@ provisioning_start() {
   notify_start
   # Settings:
   tg_send "Settings:
-  Baixar modelos do remoto (DOWNLOAD_GDRIVE_MODELS)? '${DOWNLOAD_GDRIVE_MODELS}
-  Restaurar snapshots (RESTORE_SNAPSHOTS): '${RESTORE_SNAPSHOTS}"
+  Baixar modelos do remoto (DOWNLOAD_GDRIVE_MODELS)? ${DOWNLOAD_GDRIVE_MODELS}
+  Restaurar snapshots (RESTORE_SNAPSHOTS): ${RESTORE_SNAPSHOTS}"
 
   ensure_tooling
 
