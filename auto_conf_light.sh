@@ -112,10 +112,7 @@ ensure_tooling() {
 
 
 
-# Settings:
-tg_send "Settings:
-Baixar modelos do remoto? '${DOWNLOAD_GDRIVE_MODELS}
-Restaurar snapshots: '${DOWNLOAD_GDRIVE_MODELS}"
+
 
 ensure_rclone() {
   echo "Configurando Rclone"
@@ -332,6 +329,10 @@ provisioning_get_nodes() {
 provisioning_start() {
   provisioning_print_header
   notify_start
+  # Settings:
+  tg_send "Settings:
+  Baixar modelos do remoto (DOWNLOAD_GDRIVE_MODELS)? '${DOWNLOAD_GDRIVE_MODELS}
+  Restaurar snapshots (RESTORE_SNAPSHOTS): '${RESTORE_SNAPSHOTS}"
 
   ensure_tooling
 
