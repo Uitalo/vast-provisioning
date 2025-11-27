@@ -181,7 +181,7 @@ rclone_sync_from_drive() {
   #rclone ${RCLONE_COPY_CMD} "/ComfyUI/user/workflows" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
   rclone copy "gdrive:/ComfyUI/user/workflows" "/workspace/ComfyUI/user/default/workflows"
 
-  echo "Sincronização via rclone finalizada."
+  tg_send "Sincronização via rclone finalizada."
 }
 
 restore_snapshot_from_drive() {
@@ -197,6 +197,8 @@ restore_snapshot_from_drive() {
     [[ -n "${first_json}" ]] && mv -f "${first_json}" "${SNAPSHOT_LOCAL}" || true
   fi
   ln -sf "$(basename "${SNAPSHOT_LOCAL}")" "${dst_dir}/latest.json" || true
+
+  tg_send "Snapshots restaurados.."
 }
 
 # ================================================================================================
