@@ -2,34 +2,49 @@
 set -euo pipefail
 
 # ================================================================================================
-# AMBIENTE BÁSICO
+# BASIC ENVIRONMENT
 # ================================================================================================
-# Ativa venv principal, se existir
 if [[ -d /venv/main/bin ]]; then
   # shellcheck disable=SC1091
   source /venv/main/bin/activate
 fi
 
-# Define WORKSPACE/COMFYUI_DIR com fallback seguro
 : "${WORKSPACE:=/workspace}"
 : "${COMFYUI_DIR:=${WORKSPACE}/ComfyUI}"
 
 # ================================================================================================
-# CONFIGURAÇÕES
+# HELPER: parse pipe-separated env var into a bash array
+# Sets global array VARNAME; if VARNAME_ENV is set, it overrides; VARNAME_EXTRA appends.
 # ================================================================================================
-# (mantido para compat; atualmente não usado)
+parse_env_array() {
+  local varname="$1"
+  local env_key="${varname}_ENV"
+  local extra_key="${varname}_EXTRA"
+
+  if [[ -n "${!env_key:-}" ]]; then
+    IFS='|' read -ra "$varname" <<< "${!env_key}"
+  fi
+
+  if [[ -n "${!extra_key:-}" ]]; then
+    local -a _extra
+    IFS='|' read -ra _extra <<< "${!extra_key}"
+    # nameref append (bash 4.3+)
+    declare -n _ref="$varname"
+    _ref+=("${_extra[@]}")
+    unset -n _ref
+  fi
+}
+
+# ================================================================================================
+# CONFIGURATIONS (defaults — all overridable via *_ENV / *_EXTRA env vars)
+# ================================================================================================
 : "${DOWNLOAD_GDRIVE_MODELS:=false}"
 
-# Pacotes APT adicionais (se apt existir)
 APT_PACKAGES=()
-
-# Pacotes pip do seu script + comfy-cli (remove duplicatas)
 PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface_hub')
 
-# Nodes custom (repositórios git)
 NODES=()
 
-# Listas de modelos (iniciais vazias, algumas serão populadas adiante)
 CHECKPOINTS_MODELS=()
 TEXT_ENCODERS_MODELS=()
 UNET_MODELS=(
@@ -48,11 +63,25 @@ LORAS_MODELS=(
 UPSCALER_MODELS=(
   "https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth"
 )
-DIFFUSION_MODELS=()  # estava sendo usado sem declarar
+DIFFUSION_MODELS=()
 
 WORKFLOWS=(
   "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
 )
+
+# Apply env overrides / extras for every array
+parse_env_array APT_PACKAGES
+parse_env_array PIP_PACKAGES
+parse_env_array NODES
+parse_env_array CHECKPOINTS_MODELS
+parse_env_array TEXT_ENCODERS_MODELS
+parse_env_array UNET_MODELS
+parse_env_array VAE_MODELS
+parse_env_array CLIP_MODELS
+parse_env_array LORAS_MODELS
+parse_env_array UPSCALER_MODELS
+parse_env_array DIFFUSION_MODELS
+parse_env_array WORKFLOWS
 
 # ================================================================================================
 # TELEGRAM NOTIFY
@@ -84,36 +113,35 @@ PROVISION_START_TS=""
 
 notify_start() {
   PROVISION_START_TS="$(date +%s)"
-  local host
+  local host msg
   host="$(hostname | tg_escape_html)"
-  local msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
+  msg="🚀 <b>Provisioning iniciado</b>\nHost: <code>${host}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
 }
 
 notify_end_success() {
-  local end_ts dur host
+  local end_ts dur host msg
   end_ts="$(date +%s)"
   dur="$(( end_ts - PROVISION_START_TS ))"
   host="$(hostname | tg_escape_html)"
-  local msg="✅ <b>Provisioning concluído</b>\nHost: <code>${host}</code>\nDuração: <code>${dur}s</code>\nHora: <code>$(date -Iseconds)</code>"
+  msg="✅ <b>Provisioning concluído</b>\nHost: <code>${host}</code>\nDuração: <code>${dur}s</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
 }
 
 notify_end_failure() {
   local code="$?"
-  local host
+  local host msg
   host="$(hostname | tg_escape_html)"
-  local msg="❌ <b>Provisioning falhou</b>\nHost: <code>${host}</code>\nCódigo: <code>${code}</code>\nHora: <code>$(date -Iseconds)</code>"
+  msg="❌ <b>Provisioning falhou</b>\nHost: <code>${host}</code>\nCódigo: <code>${code}</code>\nHora: <code>$(date -Iseconds)</code>"
   tg_send "$msg"
   exit "$code"
 }
 trap notify_end_failure ERR
 
 # ================================================================================================
-# UTILITÁRIOS / PRÉ-REQS
+# UTILITIES / PRE-REQS
 # ================================================================================================
 ensure_tooling() {
-  # Garante ferramentas comuns sem depender exclusivamente de apt
   if ! command -v curl >/dev/null 2>&1; then
     if command -v apt-get >/dev/null 2>&1; then apt-get update -y && apt-get install -y curl; fi
   fi
@@ -136,23 +164,25 @@ ensure_tooling() {
 # RCLONE
 # ================================================================================================
 : "${RCLONE_CONF_URL:=https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/rclone.conf}"
-: "${RCLONE_CONF_SHA256:=}"   # opcional
+: "${RCLONE_CONF_SHA256:=}"
 : "${RCLONE_REMOTE:=gdrive}"
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
-: "${RCLONE_COPY_CMD:=copy}"  # use "sync" para espelhar
+: "${RCLONE_COPY_CMD:=copy}"
 : "${RCLONE_FLAGS:=--progress --checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
+# Use HOME when /root is not writable (e.g. local macOS testing)
+: "${RCLONE_CONFIG_DIR:=${HOME:-/root}/.config/rclone}"
 
 ensure_rclone() {
   if ! command -v rclone >/dev/null 2>&1; then
-    echo "rclone não encontrado; tentando instalar..."
+    echo "rclone not found; trying to install..."
     if command -v apt-get >/dev/null 2>&1; then
       apt-get update -y && apt-get install -y rclone || true
     fi
   fi
 
   if ! command -v rclone >/dev/null 2>&1; then
-    echo "Instalação via apt falhou; baixando binário..."
+    echo "apt install failed; downloading binary..."
     curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
     command -v unzip >/dev/null 2>&1 || (apt-get update -y && apt-get install -y unzip || true)
     unzip -q /tmp/rclone.zip -d /tmp
@@ -161,38 +191,36 @@ ensure_rclone() {
     rm -rf /tmp/rclone.zip "$RCDIR"
   fi
 
-  # rclone.conf por URL
   if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
-    echo "Baixando rclone.conf de ${RCLONE_CONF_URL}..."
-    mkdir -p /root/.config/rclone
-    curl -fsSL "${RCLONE_CONF_URL}" -o /root/.config/rclone/rclone.conf.tmp
+    echo "Downloading rclone.conf from ${RCLONE_CONF_URL}..."
+    mkdir -p "${RCLONE_CONFIG_DIR}"
+    curl -fsSL "${RCLONE_CONF_URL}" -o "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"
 
     if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
-      echo "${RCLONE_CONF_SHA256}  /root/.config/rclone/rclone.conf.tmp" | sha256sum -c - \
-        || { echo "Falha na verificação de integridade do rclone.conf"; exit 1; }
+      echo "${RCLONE_CONF_SHA256}  ${RCLONE_CONFIG_DIR}/rclone.conf.tmp" | sha256sum -c - \
+        || { echo "rclone.conf integrity check failed"; exit 1; }
     fi
 
-    if grep -q "^\[.*\]" /root/.config/rclone/rclone.conf.tmp && grep -q "^type\s*=" /root/.config/rclone/rclone.conf.tmp; then
-      mv /root/.config/rclone/rclone.conf.tmp /root/.config/rclone/rclone.conf
-      chmod 600 /root/.config/rclone/rclone.conf
-      echo "rclone.conf salvo em /root/.config/rclone/rclone.conf"
+    if grep -q "^\[.*\]" "${RCLONE_CONFIG_DIR}/rclone.conf.tmp" && grep -q "^type\s*=" "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"; then
+      mv "${RCLONE_CONFIG_DIR}/rclone.conf.tmp" "${RCLONE_CONFIG_DIR}/rclone.conf"
+      chmod 600 "${RCLONE_CONFIG_DIR}/rclone.conf"
+      echo "rclone.conf saved to ${RCLONE_CONFIG_DIR}/rclone.conf"
     else
-      echo "Conteúdo inesperado no rclone.conf baixado."
-      rm -f /root/.config/rclone/rclone.conf.tmp
+      echo "Unexpected content in downloaded rclone.conf."
+      rm -f "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"
       exit 1
     fi
   fi
 
-  # Remoto deve existir
   if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
-    echo "ERRO: remoto '${RCLONE_REMOTE}:' não encontrado no rclone.conf."
+    echo "ERROR: remote '${RCLONE_REMOTE}:' not found in rclone.conf."
     rclone listremotes || true
     exit 1
   fi
 }
 
 rclone_sync_from_drive() {
-  echo "Sincronizando artefatos do Google Drive (${RCLONE_REMOTE})..."
+  echo "Syncing artifacts from Google Drive (${RCLONE_REMOTE})..."
 
   declare -A MAPS=(
     ["${RCLONE_REMOTE_ROOT}/models/checkpoints"]="${COMFYUI_DIR}/models/checkpoints"
@@ -209,32 +237,35 @@ rclone_sync_from_drive() {
     DST="${MAPS[$SRC]}"
     mkdir -p "$DST"
     echo "rclone ${RCLONE_COPY_CMD} ${RCLONE_REMOTE}:${SRC} -> ${DST}"
+    # shellcheck disable=SC2086
     rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${SRC}" "${DST}" ${RCLONE_FLAGS} || true
   done
 
-  local WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
+  local WF_LOCAL
+  WF_LOCAL="${COMFYUI_DIR}/user/default/workflows"
   mkdir -p "$WF_LOCAL"
   echo "rclone ${RCLONE_COPY_CMD} ${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR} -> ${WF_LOCAL}"
+  # shellcheck disable=SC2086
   rclone ${RCLONE_COPY_CMD} "${RCLONE_REMOTE}:${RCLONE_REMOTE_ROOT}${RCLONE_REMOTE_WORKFLOWS_SUBDIR}" "${WF_LOCAL}" ${RCLONE_FLAGS} || true
 
-  echo "Sincronização via rclone finalizada."
+  echo "rclone sync finished."
 }
 
 # ================================================================================================
-# COMFY-CLI ISOLADO
+# ISOLATED COMFY-CLI
 # ================================================================================================
 COMFYCLI_VENV=/venv/comfycli
 comfy_bin() { echo "${COMFYCLI_VENV}/bin/comfy"; }
 
 install_comfy_cli_isolado() {
-  echo "Instalando comfy-cli em venv isolado: ${COMFYCLI_VENV}"
+  echo "Installing comfy-cli in isolated venv: ${COMFYCLI_VENV}"
   python -m venv "${COMFYCLI_VENV}"
   "${COMFYCLI_VENV}/bin/pip" install --upgrade pip
   "${COMFYCLI_VENV}/bin/pip" install --no-cache-dir comfy-cli
 }
 
 configure_comfy_cli_isolado() {
-  echo "Configurando comfy-cli (set-default ou fallback cli.toml) no venv isolado..."
+  echo "Configuring comfy-cli (set-default or fallback cli.toml) in isolated venv..."
   local COMFY
   COMFY="$(comfy_bin)"
   local WORKFLOWS_DIR="${COMFYUI_DIR}/user/default/workflows"
@@ -254,16 +285,16 @@ configure_comfy_cli_isolado() {
     "$COMFY" set-default --controlnet-dir "${COMFYUI_DIR}/models/controlnet" || true
     "$COMFY" set-default --ipadapter-dir  "${COMFYUI_DIR}/models/ipadapter" || true
     "$COMFY" set-default --embeddings-dir "${COMFYUI_DIR}/models/embeddings" || true
-    [[ -n "${HF_TOKEN:-}" ]] && "$COMFY" set-default --hf-api-token "$HF_TOKEN" || true
-    [[ -n "${CIVITAI_TOKEN:-}" ]] && "$COMFY" set-default --civitai-api-token "$CIVITAI_TOKEN" || true
+    if [[ -n "${HF_TOKEN:-}" ]]; then "$COMFY" set-default --hf-api-token "$HF_TOKEN" || true; fi
+    if [[ -n "${CIVITAI_TOKEN:-}" ]]; then "$COMFY" set-default --civitai-api-token "$CIVITAI_TOKEN" || true; fi
     set -e
   else
-    echo "Subcomando 'set-default' indisponível; usando fallback em ~/.config/comfy/cli.toml"
-    local CFG_DIR="/root/.config/comfy"
+    echo "Subcommand 'set-default' unavailable; using fallback ~/.config/comfy/cli.toml"
+    local CFG_DIR="${HOME:-/root}/.config/comfy"
     local CFG_FILE="${CFG_DIR}/cli.toml"
     mkdir -p "$CFG_DIR"
     cat > "$CFG_FILE" <<EOF
-# Gerado automaticamente
+# Auto-generated
 workspace_dir = "${COMFYUI_DIR}"
 workflows_dir = "${WORKFLOWS_DIR}"
 models_dir    = "${MODELS_DIR}"
@@ -286,7 +317,7 @@ EOF
 }
 
 # ================================================================================================
-# PROVISIONAMENTO
+# PROVISIONING
 # ================================================================================================
 provisioning_print_header() {
   printf "\n##############################################\n#                                            #\n#          Provisioning container            #\n#                                            #\n#         This will take some time           #\n#                                            #\n# Your container will be ready on completion #\n#                                            #\n##############################################\n\n"
@@ -302,17 +333,14 @@ provisioning_get_apt_packages() {
       apt-get update -y
       apt-get install -y "${APT_PACKAGES[@]}"
     else
-      echo "apt não disponível; pulando APT_PACKAGES."
+      echo "apt not available; skipping APT_PACKAGES."
     fi
   fi
 }
 
 provisioning_get_pip_packages() {
   if [[ ${#PIP_PACKAGES[@]} -gt 0 ]]; then
-
     pip install --no-cache-dir "${PIP_PACKAGES[@]}"
-    pip install --no-cache-dir "${PIP_PACKAGES[@]}"
-
   fi
 }
 
@@ -364,9 +392,9 @@ provisioning_get_files() {
   local dir="$1"; shift
   mkdir -p "$dir"
   local arr=("$@")
-  printf "Verificando/baixando %s arquivo(s) para %s...\n" "${#arr[@]}" "$dir"
+  printf "Checking/downloading %s file(s) to %s...\n" "${#arr[@]}" "$dir"
   for url in "${arr[@]}"; do
-    printf "Processando: %s\n" "${url}"
+    printf "Processing: %s\n" "${url}"
     provisioning_download "${url}" "${dir}"
     printf "\n"
   done
@@ -386,7 +414,7 @@ provisioning_download() {
 
   filename="$(basename "${url%%\?*}")"
   if [[ -f "${outdir}/${filename}" ]]; then
-    echo "Já existe: ${outdir}/${filename} — pulando download."
+    echo "Already exists: ${outdir}/${filename} — skipping download."
     return 0
   fi
 
@@ -404,12 +432,22 @@ provisioning_start() {
 
   ensure_tooling
 
-  # Espelha CIVITAI_TOKEN em CIVITAI_API_TOKEN (para ferramentas que esperam esse nome)
   if [[ -n "${CIVITAI_TOKEN:-}" ]]; then
     export CIVITAI_API_TOKEN="$CIVITAI_TOKEN"
   fi
 
-  # Garante estrutura de pastas principal do ComfyUI
+  # Verify workspace is writable before attempting any mkdir
+  if ! mkdir -p "${WORKSPACE}" 2>/dev/null; then
+    echo ""
+    echo "ERROR: Cannot create workspace at '${WORKSPACE}' (read-only or no permission)."
+    echo "       Set WORKSPACE to a writable path before running:"
+    echo "         WORKSPACE=/tmp/comfytest bash auto_conf.sh"
+    echo "       Or via Python launcher:"
+    echo "         WORKSPACE=/tmp/comfytest python run_provisioning.py"
+    echo ""
+    exit 1
+  fi
+
   mkdir -p \
     "${COMFYUI_DIR}/models/checkpoints" \
     "${COMFYUI_DIR}/models/unet" \
@@ -425,33 +463,32 @@ provisioning_start() {
     "${COMFYUI_DIR}/user/default/workflows" \
     "${COMFYUI_DIR}/custom_nodes"
 
-  # 1) rclone + sync do Drive
+  # 1) rclone + Drive sync
   ensure_rclone
   rclone_sync_from_drive
 
-  # 2) pacotes, nodes, pip (do ambiente ComfyUI)
+  # 2) packages, nodes, pip
   provisioning_get_apt_packages
   provisioning_get_nodes
   provisioning_get_pip_packages
 
-  # 3) comfy-cli isolado e configuração
+  # 3) isolated comfy-cli
   install_comfy_cli_isolado
   configure_comfy_cli_isolado
   "$(comfy_bin)" --version || true
   "$(comfy_bin)" config show || true
 
-  # 4) workflows default (se não vieram do Drive)
+  # 4) default workflows (if not synced from Drive)
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
   provisioning_get_files "${workflows_dir}" "${WORKFLOWS[@]}"
 
-  # 5) escolhe dev/schnell e completa downloads faltantes
+  # 5) choose dev/schnell and download remaining models
   if provisioning_has_valid_hf_token; then
     UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors")
     VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors")
   else
     UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors")
     VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors")
-    # Ajusta workflow exemplo para usar schnell se necessário
     sed -i 's/flux1-dev\.safetensors/flux1-schnell.safetensors/g' "${workflows_dir}/flux_dev_example.json" || true
   fi
 
@@ -460,38 +497,23 @@ provisioning_start() {
   provisioning_get_files "${COMFYUI_DIR}/models/clip" "${CLIP_MODELS[@]}"
 
   if ((${#LORAS_MODELS[@]})); then
-    echo "Baixando modelos Loras"
     provisioning_get_files "${COMFYUI_DIR}/models/loras" "${LORAS_MODELS[@]}"
-  else
-    echo "Sem modelos Loras definidos"
   fi
 
   if ((${#UPSCALER_MODELS[@]})); then
-    echo "Baixando modelos Upscaler"
     provisioning_get_files "${COMFYUI_DIR}/models/upscale_models" "${UPSCALER_MODELS[@]}"
-  else
-    echo "Sem modelos Upscaler definidos"
   fi
 
   if ((${#CHECKPOINTS_MODELS[@]})); then
-    echo "Baixando modelos Checkpoints"
     provisioning_get_files "${COMFYUI_DIR}/models/checkpoints" "${CHECKPOINTS_MODELS[@]}"
-  else
-    echo "Sem modelos Checkpoints definidos"
   fi
 
   if ((${#DIFFUSION_MODELS[@]})); then
-    echo "Baixando modelos Diffusion"
     provisioning_get_files "${COMFYUI_DIR}/models/diffusion_models" "${DIFFUSION_MODELS[@]}"
-  else
-    echo "Sem modelos Diffusion definidos"
   fi
 
   if ((${#TEXT_ENCODERS_MODELS[@]})); then
-    echo "Baixando Text Encoders"
     provisioning_get_files "${COMFYUI_DIR}/models/text_encoders" "${TEXT_ENCODERS_MODELS[@]}"
-  else
-    echo "Sem Text Encoders definidos"
   fi
 
   provisioning_print_end
