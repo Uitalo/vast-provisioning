@@ -36,38 +36,22 @@ parse_env_array() {
 }
 
 # ================================================================================================
-# CONFIGURATIONS (defaults — all overridable via *_ENV / *_EXTRA env vars)
+# CONFIGURATIONS (Arrays limpos - preenchidos puramente via *_ENV / *_EXTRA env vars)
 # ================================================================================================
 : "${DOWNLOAD_GDRIVE_MODELS:=false}"
 
 APT_PACKAGES=()
-PIP_PACKAGES=('sageattention' 'deepdiff' 'aiohttp' 'huggingface_hub')
-
+PIP_PACKAGES=()
 NODES=()
-
 CHECKPOINTS_MODELS=()
 TEXT_ENCODERS_MODELS=()
-UNET_MODELS=(
-  "https://huggingface.co/bullerwins/Wan2.2-I2V-A14B-GGUF/resolve/main/wan2.2_i2v_high_noise_14B_Q4_K_M.gguf"
-)
-VAE_MODELS=(
-  "https://huggingface.co/ratoenien/wan_2.1_vae/resolve/main/wan_2.1_vae.safetensors"
-)
-CLIP_MODELS=(
-  "https://huggingface.co/chatpig/umt5xxl-encoder-gguf/resolve/main/umt5xxl-encoder-q8_0.gguf"
-)
-LORAS_MODELS=(
-  "https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors"
-  "https://civitai.com/api/download/models/1602715?type=Model&format=SafeTensor"
-)
-UPSCALER_MODELS=(
-  "https://huggingface.co/dtarnow/UPscaler/resolve/main/RealESRGAN_x2plus.pth"
-)
+UNET_MODELS=()
+VAE_MODELS=()
+CLIP_MODELS=()
+LORAS_MODELS=()
+UPSCALER_MODELS=()
 DIFFUSION_MODELS=()
-
-WORKFLOWS=(
-  "https://gist.githubusercontent.com/robballantyne/f8cb692bdcd89c96c0bd1ec0c969d905/raw/2d969f732d7873f0e1ee23b2625b50f201c722a5/flux_dev_example.json"
-)
+WORKFLOWS=()
 
 # Apply env overrides / extras for every array
 parse_env_array APT_PACKAGES
@@ -170,7 +154,6 @@ ensure_tooling() {
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
 : "${RCLONE_COPY_CMD:=copy}"
 : "${RCLONE_FLAGS:=--progress --checkers=8 --transfers=4 --drive-chunk-size=128M --fast-list}"
-# Use HOME when /root is not writable (e.g. local macOS testing)
 : "${RCLONE_CONFIG_DIR:=${HOME:-/root}/.config/rclone}"
 
 ensure_rclone() {
@@ -367,31 +350,11 @@ provisioning_get_nodes() {
   done
 }
 
-provisioning_has_valid_hf_token() {
-  [[ -n "${HF_TOKEN:-}" ]] || return 1
-  local url="https://huggingface.co/api/whoami-v2"
-  local response
-  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
-    -H "Authorization: Bearer $HF_TOKEN" \
-    -H "Content-Type: application/json")
-  [[ "$response" -eq 200 ]]
-}
-
-provisioning_has_valid_civitai_token() {
-  [[ -n "${CIVITAI_TOKEN:-}" ]] || return 1
-  local url="https://civitai.com/api/v1/models?hidden=1&limit=1"
-  local response
-  response=$(curl -o /dev/null -s -w "%{http_code}" -X GET "$url" \
-    -H "Authorization: Bearer $CIVITAI_TOKEN" \
-    -H "Content-Type: application/json")
-  [[ "$response" -eq 200 ]]
-}
-
 provisioning_get_files() {
   if [[ -z ${2:-} ]]; then return 1; fi
   local dir="$1"; shift
-  mkdir -p "$dir"
   local arr=("$@")
+  mkdir -p "$dir"
   printf "Checking/downloading %s file(s) to %s...\n" "${#arr[@]}" "$dir"
   for url in "${arr[@]}"; do
     printf "Processing: %s\n" "${url}"
@@ -478,23 +441,23 @@ provisioning_start() {
   "$(comfy_bin)" --version || true
   "$(comfy_bin)" config show || true
 
-  # 4) default workflows (if not synced from Drive)
+  # 4) Download Files from ENV variables
   local workflows_dir="${COMFYUI_DIR}/user/default/workflows"
-  provisioning_get_files "${workflows_dir}" "${WORKFLOWS[@]}"
-
-  # 5) choose dev/schnell and download remaining models
-  if provisioning_has_valid_hf_token; then
-    UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors")
-    VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors")
-  else
-    UNET_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/flux1-schnell.safetensors")
-    VAE_MODELS+=("https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors")
-    sed -i 's/flux1-dev\.safetensors/flux1-schnell.safetensors/g' "${workflows_dir}/flux_dev_example.json" || true
+  if ((${#WORKFLOWS[@]})); then
+    provisioning_get_files "${workflows_dir}" "${WORKFLOWS[@]}"
   fi
 
-  provisioning_get_files "${COMFYUI_DIR}/models/unet" "${UNET_MODELS[@]}"
-  provisioning_get_files "${COMFYUI_DIR}/models/vae"  "${VAE_MODELS[@]}"
-  provisioning_get_files "${COMFYUI_DIR}/models/clip" "${CLIP_MODELS[@]}"
+  if ((${#UNET_MODELS[@]})); then
+    provisioning_get_files "${COMFYUI_DIR}/models/unet" "${UNET_MODELS[@]}"
+  fi
+
+  if ((${#VAE_MODELS[@]})); then
+    provisioning_get_files "${COMFYUI_DIR}/models/vae"  "${VAE_MODELS[@]}"
+  fi
+
+  if ((${#CLIP_MODELS[@]})); then
+    provisioning_get_files "${COMFYUI_DIR}/models/clip" "${CLIP_MODELS[@]}"
+  fi
 
   if ((${#LORAS_MODELS[@]})); then
     provisioning_get_files "${COMFYUI_DIR}/models/loras" "${LORAS_MODELS[@]}"
