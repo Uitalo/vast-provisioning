@@ -38,7 +38,7 @@ parse_env_array() {
 # ================================================================================================
 # CONFIGURATIONS (Arrays limpos - preenchidos puramente via *_ENV / *_EXTRA env vars)
 # ================================================================================================
-: "${DOWNLOAD_GDRIVE_MODELS:=false}"
+#: "${DOWNLOAD_GDRIVE_MODELS:=false}"
 
 APT_PACKAGES=()
 PIP_PACKAGES=()
@@ -147,8 +147,7 @@ ensure_tooling() {
 # ================================================================================================
 # RCLONE
 # ================================================================================================
-: "${RCLONE_CONF_URL:=https://raw.githubusercontent.com/Uitalo/vast-provisioning/refs/heads/main/rclone.conf}"
-: "${RCLONE_CONF_SHA256:=}"
+: "${RCLONE_CONF_BASE64:=}"
 : "${RCLONE_REMOTE:=gdrive}"
 : "${RCLONE_REMOTE_ROOT:=/ComfyUI}"
 : "${RCLONE_REMOTE_WORKFLOWS_SUBDIR:=/workflows}"
@@ -174,25 +173,14 @@ ensure_rclone() {
     rm -rf /tmp/rclone.zip "$RCDIR"
   fi
 
-  if [[ -n "${RCLONE_CONF_URL:-}" ]]; then
-    echo "Downloading rclone.conf from ${RCLONE_CONF_URL}..."
+  if [[ -n "${RCLONE_CONF_BASE64:-}" ]]; then
+    echo "Creating rclone.conf from base64 environment variable..."
     mkdir -p "${RCLONE_CONFIG_DIR}"
-    curl -fsSL "${RCLONE_CONF_URL}" -o "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"
-
-    if [[ -n "${RCLONE_CONF_SHA256:-}" ]]; then
-      echo "${RCLONE_CONF_SHA256}  ${RCLONE_CONFIG_DIR}/rclone.conf.tmp" | sha256sum -c - \
-        || { echo "rclone.conf integrity check failed"; exit 1; }
-    fi
-
-    if grep -q "^\[.*\]" "${RCLONE_CONFIG_DIR}/rclone.conf.tmp" && grep -q "^type\s*=" "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"; then
-      mv "${RCLONE_CONFIG_DIR}/rclone.conf.tmp" "${RCLONE_CONFIG_DIR}/rclone.conf"
-      chmod 600 "${RCLONE_CONFIG_DIR}/rclone.conf"
-      echo "rclone.conf saved to ${RCLONE_CONFIG_DIR}/rclone.conf"
-    else
-      echo "Unexpected content in downloaded rclone.conf."
-      rm -f "${RCLONE_CONFIG_DIR}/rclone.conf.tmp"
-      exit 1
-    fi
+    echo "${RCLONE_CONF_BASE64}" | base64 -d > "${RCLONE_CONFIG_DIR}/rclone.conf"
+    chmod 600 "${RCLONE_CONFIG_DIR}/rclone.conf"
+    echo "rclone.conf saved to ${RCLONE_CONFIG_DIR}/rclone.conf"
+  else
+    echo "No RCLONE_CONF_BASE64 provided. Skipping custom config."
   fi
 
   if ! rclone listremotes | grep -q "^${RCLONE_REMOTE}:"; then
@@ -428,7 +416,7 @@ provisioning_start() {
 
   # 1) rclone + Drive sync
   ensure_rclone
-  rclone_sync_from_drive
+  # rclone_sync_from_drive
 
   # 2) packages, nodes, pip
   provisioning_get_apt_packages
